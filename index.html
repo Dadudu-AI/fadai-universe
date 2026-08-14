@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>发呆音宇宙 · 音乐律动可视化</title>
+<style>
+  html,body{margin:0;padding:0;overflow:hidden;background:#010109;font-family:-apple-system,"PingFang SC",sans-serif;color:#c7d8f5;}
+  canvas{display:block;}
+  #cover{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at center,#070c22 0%,#010109 72%);text-align:center;transition:opacity 1.1s;}
+  #cover.off{opacity:0;pointer-events:none;}
+  #cover h1{font-size:40px;letter-spacing:18px;margin:0 0 8px;font-weight:600;
+    background:linear-gradient(90deg,#4fd2e6,#8f9bff,#d98fe6,#e6c78f,#4fd2e6);background-size:220% auto;
+    -webkit-background-clip:text;background-clip:text;color:transparent;animation:flow 8s linear infinite;
+    filter:drop-shadow(0 0 16px rgba(110,140,230,.4));}
+  @keyframes flow{to{background-position:220% center;}}
+  #cover p{font-size:13px;letter-spacing:3px;color:#6b7fb0;margin:4px 0;}
+  .btnrow{margin-top:30px;display:flex;gap:16px;flex-wrap:wrap;justify-content:center;}
+  .btn{cursor:pointer;padding:14px 32px;border-radius:40px;font-size:14px;letter-spacing:3px;border:1px solid rgba(110,140,220,.35);
+    background:rgba(24,40,90,.2);color:#cdd9f2;transition:.25s;backdrop-filter:blur(6px);}
+  .btn:hover{background:rgba(56,92,190,.34);border-color:#6d97e6;box-shadow:0 0 24px rgba(70,110,220,.4);transform:translateY(-2px);}
+  #file{display:none;}
+
+  #track{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:20;font-size:12.5px;letter-spacing:4px;color:#93aee0;
+    text-shadow:0 0 12px rgba(70,110,220,.6);opacity:0;transition:opacity .6s;}
+  #vg{position:fixed;inset:0;z-index:10;pointer-events:none;
+    background:radial-gradient(ellipse at center,transparent 46%,rgba(0,0,0,.62) 100%);}
+  #ctl{position:fixed;right:18px;bottom:16px;z-index:20;display:flex;gap:10px;opacity:0;transition:opacity .5s;}
+  #ctl.show{opacity:1;}
+  .mini{cursor:pointer;width:44px;height:44px;border-radius:50%;border:1px solid rgba(110,140,220,.3);
+    background:rgba(24,40,90,.28);color:#cdd9f2;font-size:17px;display:flex;align-items:center;justify-content:center;transition:.2s;backdrop-filter:blur(6px);}
+  .mini:hover{background:rgba(56,92,190,.44);box-shadow:0 0 16px rgba(70,110,220,.5);}
+
+  #modes{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:22;display:flex;gap:5px;
+    opacity:0;transition:opacity .5s;pointer-events:none;}
+  #modes.show{opacity:.42;pointer-events:auto;}
+  #modes:hover{opacity:1;}
+  .mode{cursor:pointer;padding:4px 11px;border-radius:20px;font-size:10.5px;letter-spacing:1px;
+    border:1px solid rgba(120,145,210,.22);background:rgba(20,32,66,.28);color:#94a5cf;transition:.25s;backdrop-filter:blur(6px);}
+  .mode:hover{background:rgba(56,92,190,.42);color:#eef4ff;border-color:rgba(127,160,234,.6);}
+  .mode.active{background:rgba(70,110,220,.48);color:#fff;border-color:rgba(140,172,240,.65);}
+</style>
+</head>
+<body>
+<div id="cover">
+  <h1>发呆音宇宙</h1>
+  <p>SOUND · ORB — 随音乐在三维空间处处律动的声音生命体</p>
+  <p style="font-size:12px;color:#556aa0;">上传一首歌，或使用麦克风采集现场声音</p>
+  <div class="btnrow">
+    <label class="btn" for="file">▸ 选择音乐文件</label>
+    <div class="btn" id="micbtn">◉ 使用麦克风</div>
+  </div>
+  <input type="file" id="file" accept="audio/*">
+</div>
+
+<div id="track"></div>
+<div id="modes">
+  <div class="mode" data-m="1">元神</div>
+  <div class="mode active" data-m="2">鲸鱼</div>
+  <div class="mode" data-m="4">水母</div>
+</div>
+<div id="ctl">
+  <div class="mini" id="playpause" title="播放/暂停">⏸</div>
+  <div class="mini" id="another" title="换一首/换源">⤢</div>
+  <div class="mini" id="fullscreen" title="全屏">⛶</div>
+</div>
+<div id="vg"></div>
+
+<script src="lib/three.min.js"></script>
+<script src="lib/OrbitControls.js"></script>
+<script src="lib/CopyShader.js"></script>
+<script src="lib/LuminosityHighPassShader.js"></script>
+<script src="lib/GammaCorrectionShader.js"></script>
+<script src="lib/EffectComposer.js"></script>
+<script src="lib/RenderPass.js"></script>
+<script src="lib/ShaderPass.js"></script>
+<script src="lib/UnrealBloomPass.js"></script>
+<script>
+"use strict";
+// ==================== 全局 ====================
+var scene, camera, renderer, controls, composer, bloom, clock;
+var audioCtx, analyser, freqData, timeData, audioEl, mediaSource, micStream, playing=false;
+var W=window.innerWidth, H=window.innerHeight;
+
+var freqTex, freqTexData, FTN=512;
+var bass=0, mid=0, treble=0, overall=0, beat=0, beatHold=0;
+var bassS=0, midS=0, trebleS=0, overallS=0, hueBase=0.58;
+var camPunch=0, camRoll=0, flowEnergy=0;
+
+var orb;                       // 统一的球体（组）
+var shells=[];                 // 多层粒子球壳（同一形体的体积层）
+var heart, heartWire;          // 内部发光核
+var flowCreature, flowMat, flowN=72000;   // 内部曲旋流动生命体
+var stars, starMat, nebula=[], shockwaves=[];
+var whales=[];                  // 流体状鲸鱼列表(0蓝鲸 1座头鲸 2抹香鲸)
+var whaleCooldown=0, notes=[], noteTexCache={}, jellies=[], puffs=[];   // 全局 spawn 数组
+var vizMode=2, spawnCooldown=0;   // 效果模式：1本原 2鲸鱼 4水母
+
+// ---------- GLSL: 3D 单纯形噪声 (Ashima) ----------
+var SNOISE=[
+"vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}",
+"vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}",
+"vec4 permute(vec4 x){return mod289(((x*34.0)+1.0)*x);}",
+"vec4 taylorInvSqrt(vec4 r){return 1.79284291400159-0.85373472095314*r;}",
+"float snoise(vec3 v){",
+" const vec2 C=vec2(1.0/6.0,1.0/3.0);const vec4 D=vec4(0.0,0.5,1.0,2.0);",
+" vec3 i=floor(v+dot(v,C.yyy));vec3 x0=v-i+dot(i,C.xxx);",
+" vec3 g=step(x0.yzx,x0.xyz);vec3 l=1.0-g;vec3 i1=min(g.xyz,l.zxy);vec3 i2=max(g.xyz,l.zxy);",
+" vec3 x1=x0-i1+C.xxx;vec3 x2=x0-i2+C.yyy;vec3 x3=x0-D.yyy;",
+" i=mod289(i);",
+" vec4 p=permute(permute(permute(i.z+vec4(0.0,i1.z,i2.z,1.0))+i.y+vec4(0.0,i1.y,i2.y,1.0))+i.x+vec4(0.0,i1.x,i2.x,1.0));",
+" float n_=0.142857142857;vec3 ns=n_*D.wyz-D.xzx;",
+" vec4 j=p-49.0*floor(p*ns.z*ns.z);",
+" vec4 x_=floor(j*ns.z);vec4 y_=floor(j-7.0*x_);",
+" vec4 x=x_*ns.x+ns.yyyy;vec4 y=y_*ns.x+ns.yyyy;vec4 h=1.0-abs(x)-abs(y);",
+" vec4 b0=vec4(x.xy,y.xy);vec4 b1=vec4(x.zw,y.zw);",
+" vec4 s0=floor(b0)*2.0+1.0;vec4 s1=floor(b1)*2.0+1.0;vec4 sh=-step(h,vec4(0.0));",
+" vec4 a0=b0.xzyw+s0.xzyw*sh.xxyy;vec4 a1=b1.xzyw+s1.xzyw*sh.zzww;",
+" vec3 p0=vec3(a0.xy,h.x);vec3 p1=vec3(a0.zw,h.y);vec3 p2=vec3(a1.xy,h.z);vec3 p3=vec3(a1.zw,h.w);",
+" vec4 norm=taylorInvSqrt(vec4(dot(p0,p0),dot(p1,p1),dot(p2,p2),dot(p3,p3)));",
+" p0*=norm.x;p1*=norm.y;p2*=norm.z;p3*=norm.w;",
+" vec4 m=max(0.6-vec4(dot(x0,x0),dot(x1,x1),dot(x2,x2),dot(x3,x3)),0.0);m=m*m;",
+" return 42.0*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));",
+"}"].join("\n");
+
+var HSL="vec3 hsl2rgb(float h,float s,float l){vec3 r=clamp(abs(mod(h*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0,0.0,1.0);return l+s*(r-0.5)*(1.0-abs(2.0*l-1.0));}";
+
+// ---------- GLSL: 曲旋噪声（无散度旋涡流场，产生翻涌流动的生命感）----------
+var CURL=[
+"vec3 snoiseVec3(vec3 x){",
+" float s=snoise(x);",
+" float s1=snoise(vec3(x.y-19.1,x.z+33.4,x.x+47.2));",
+" float s2=snoise(vec3(x.z+74.2,x.x-124.5,x.y+99.4));",
+" return vec3(s,s1,s2);}",
+"vec3 curlNoise(vec3 p){",
+" const float e=0.12;vec3 dx=vec3(e,0.0,0.0),dy=vec3(0.0,e,0.0),dz=vec3(0.0,0.0,e);",
+" vec3 px0=snoiseVec3(p-dx),px1=snoiseVec3(p+dx);",
+" vec3 py0=snoiseVec3(p-dy),py1=snoiseVec3(p+dy);",
+" vec3 pz0=snoiseVec3(p-dz),pz1=snoiseVec3(p+dz);",
+" float x=py1.z-py0.z-pz1.y+pz0.y;",
+" float y=pz1.x-pz0.x-px1.z+px0.z;",
+" float z=px1.y-px0.y-py1.x+py0.x;",
+" return normalize(vec3(x,y,z)/(2.0*e));}"].join("\n");
+
+init();
+animate();
+
+// ==================== 初始化 ====================
+function init(){
+  scene=new THREE.Scene();
+  scene.fog=new THREE.FogExp2(0x010109,0.0010);
+
+  camera=new THREE.PerspectiveCamera(58,W/H,0.1,8000);
+  camera.position.set(0,30,360);
+
+  renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(W,H);
+  renderer.setClearColor(0x010109,1);
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=0.72;              // 压低整体亮度
+  document.body.appendChild(renderer.domElement);
+
+  controls=new THREE.OrbitControls(camera,renderer.domElement);
+  controls.enableDamping=true;controls.dampingFactor=0.06;
+  controls.minDistance=110;controls.maxDistance=1400;
+  controls.autoRotate=true;controls.autoRotateSpeed=0.32;
+
+  clock=new THREE.Clock();
+  buildFreqTex();
+  buildStars();
+  buildNebula();
+  buildOrb();          // 统一球体
+  buildLights();
+  buildPost();
+
+  window.addEventListener('resize',onResize);
+  bindUI();
+}
+
+function buildFreqTex(){
+  freqTexData=new Uint8Array(FTN*4);
+  freqTex=new THREE.DataTexture(freqTexData,FTN,1,THREE.RGBAFormat,THREE.UnsignedByteType);
+  freqTex.minFilter=THREE.LinearFilter;freqTex.magFilter=THREE.LinearFilter;freqTex.needsUpdate=true;
+}
+
+// 极细柔光圆点贴图
+function softTex(){
+  var s=64,c=document.createElement('canvas');c.width=c.height=s;
+  var x=c.getContext('2d');
+  var g=x.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);
+  g.addColorStop(0,'rgba(255,255,255,1)');
+  g.addColorStop(0.3,'rgba(255,255,255,0.7)');
+  g.addColorStop(0.6,'rgba(255,255,255,0.16)');
+  g.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=g;x.fillRect(0,0,s,s);
+  return new THREE.CanvasTexture(c);
+}
+
+// ---------- 环境：暗淡星空 ----------
+function buildStars(){
+  var n=26000,pos=new Float32Array(n*3),col=new Float32Array(n*3),sz=new Float32Array(n);
+  var c=new THREE.Color();
+  for(var i=0;i<n;i++){
+    var r=700+Math.random()*4200,th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
+    pos[i*3]=r*Math.sin(ph)*Math.cos(th);pos[i*3+1]=r*Math.cos(ph)*0.7;pos[i*3+2]=r*Math.sin(ph)*Math.sin(th);
+    var t=Math.random();
+    // 更明显、更绚丽的多色星海
+    if(t<0.22)c.setHSL(0.58,0.85,0.72);        // 蓝
+    else if(t<0.40)c.setHSL(0.11,0.9,0.72);    // 金
+    else if(t<0.52)c.setHSL(0.88,0.8,0.72);    // 品红
+    else if(t<0.62)c.setHSL(0.48,0.8,0.72);    // 青
+    else c.setHSL(0.6,0.15,0.85);              // 冷白
+    col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b;sz[i]=1.0+Math.random()*2.6;
+  }
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  g.setAttribute('aScale',new THREE.Float32BufferAttribute(sz,1));
+  starMat=new THREE.ShaderMaterial({
+    uniforms:{uTex:{value:softTex()},uPix:{value:renderer.getPixelRatio()},uBoost:{value:1.0}},
+    vertexShader:["attribute float aScale;varying vec3 vC;uniform float uPix;uniform float uBoost;",
+      "void main(){vC=color;vec4 mv=modelViewMatrix*vec4(position,1.0);",
+      "gl_PointSize=aScale*uBoost*(320.0/-mv.z)*uPix;gl_Position=projectionMatrix*mv;}"].join("\n"),
+    fragmentShader:["uniform sampler2D uTex;varying vec3 vC;",
+      "void main(){vec4 t=texture2D(uTex,gl_PointCoord);if(t.a<0.02)discard;gl_FragColor=vec4(vC,1.0)*t.a*1.15;}"].join("\n"),
+    transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,vertexColors:true
+  });
+  stars=new THREE.Points(g,starMat);scene.add(stars);
+}
+
+function makeNebulaTex(hue){
+  var s=256,cvs=document.createElement('canvas');cvs.width=cvs.height=s;var ctx=cvs.getContext('2d');
+  var g=ctx.createRadialGradient(s/2,s/2,0,s/2,s/2,s/2);
+  var col=new THREE.Color().setHSL(hue,0.9,0.55);var R=(col.r*255)|0,G=(col.g*255)|0,B=(col.b*255)|0;
+  g.addColorStop(0,'rgba('+R+','+G+','+B+',0.8)');g.addColorStop(0.4,'rgba('+R+','+G+','+B+',0.18)');g.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,s,s);return new THREE.CanvasTexture(cvs);
+}
+function buildNebula(){
+  var hues=[0.58,0.78,0.50,0.92,0.08,0.66,0.40,0.13];
+  for(var i=0;i<hues.length;i++){
+    var m=new THREE.SpriteMaterial({map:makeNebulaTex(hues[i]),transparent:true,opacity:0.09,blending:THREE.AdditiveBlending,depthWrite:false});
+    var sp=new THREE.Sprite(m);var r=900+Math.random()*1900,a=Math.random()*Math.PI*2;
+    sp.position.set(Math.cos(a)*r,(Math.random()-0.5)*800,Math.sin(a)*r);
+    var sc=900+Math.random()*1400;sp.scale.set(sc,sc,1);sp.userData.hue=hues[i];sp.userData.baseScale=sc;nebula.push(sp);scene.add(sp);
+  }
+}
+
+// ==================== 统一球体 ====================
+// 每层球壳的粒子材质：频谱纹理逐点驱动径向位移 + 有机噪声抖动
+function shellMaterial(sizeMul, lightBias){
+  return new THREE.ShaderMaterial({
+    uniforms:{
+      uFreqTex:{value:freqTex},uTime:{value:0},uBass:{value:0},uTreble:{value:0},
+      uFlow:{value:0},uBeat:{value:0},uMid:{value:0},
+      uTex:{value:softTex()},uPix:{value:renderer.getPixelRatio()},uSize:{value:sizeMul},uHue:{value:0.58}
+    },
+    vertexShader:[
+      SNOISE,HSL,
+      "uniform sampler2D uFreqTex;uniform float uTime,uBass,uTreble,uFlow,uBeat,uMid,uPix,uSize,uHue;",
+      "attribute float aFreq;attribute float aSeed;attribute float aScale;",
+      "varying vec3 vCol;varying float vAmp;",
+      "void main(){",
+      "  float amp=texture2D(uFreqTex,vec2(aFreq,0.5)).r;",
+      "  vAmp=amp;",
+      "  float R=length(position);vec3 dir=position/R;",
+      "  float wob=snoise(dir*2.4+vec3(0.0,0.0,uTime*0.22));",           // 有机三维抖动，处处不同
+      "  float hi=snoise(dir*6.0+vec3(uTime*0.4));",                     // 高频细颤
+      "  float pulse=sin(R*0.05 - uFlow*2.2)*(1.5+uBass*9.0+uMid*4.0);", // 从生命体向外发射的行波脉冲
+      "  float rr=R + amp*(R*0.30+13.0)",                               // 该点频段越强越向外撑（圆润不尖）
+      "          + wob*(1.2+amp*3.0)",
+      "          + hi*uTreble*3.5",
+      "          + pulse",                                              // 内外联动
+      "          + uBass*4.0 + uBeat*7.0;",                             // 节拍整体外扩
+      "  vec3 p=dir*rr;",
+      "  float h=mod(uHue + aFreq*0.75 + amp*0.28 + wob*0.03,1.0);",
+      "  vCol=hsl2rgb(h,0.92,0.30+amp*0.32);",                          // 更绚丽
+      "  vec4 mv=modelViewMatrix*vec4(p,1.0);",
+      "  gl_PointSize=aScale*uSize*(0.5+amp*2.4)*(200.0/-mv.z)*uPix;",  // 极细腻，安静时几乎不可见
+      "  gl_Position=projectionMatrix*mv;}"
+    ].join("\n"),
+    fragmentShader:[
+      "uniform sampler2D uTex;varying vec3 vCol;varying float vAmp;",
+      "void main(){vec4 t=texture2D(uTex,gl_PointCoord);if(t.a<0.02)discard;",
+      "  vec3 col=vCol*(0.45+vAmp*1.25);",
+      "  float a=t.a*(0.35+vAmp*0.65);",                                // 安静区域更暗，避免过亮
+      "  gl_FragColor=vec4(col,1.0)*a;}"
+    ].join("\n"),
+    transparent:true,blending:THREE.AdditiveBlending,depthWrite:false
+  });
+}
+
+// 生成一层斐波那契球壳
+function makeShell(count,radius,scaleMin,scaleMax,sizeMul,jitter){
+  var pos=new Float32Array(count*3),freq=new Float32Array(count),
+      seed=new Float32Array(count),scl=new Float32Array(count);
+  var GA=Math.PI*(3-Math.sqrt(5));                                     // 黄金角
+  for(var i=0;i<count;i++){
+    var y=1-(i/(count-1))*2;                                          // 1..-1
+    var rad=Math.sqrt(1-y*y);
+    var th=GA*i;
+    var nx=Math.cos(th)*rad, ny=y, nz=Math.sin(th)*rad;
+    var rr=radius*(1+(Math.random()-0.5)*jitter);
+    pos[i*3]=nx*rr;pos[i*3+1]=ny*rr;pos[i*3+2]=nz*rr;
+    // 频率映射：用经纬构成的多分区图案 → 全球面遍布众多独立律动区
+    var lat=Math.asin(Math.max(-1,Math.min(1,ny)));
+    var lon=Math.atan2(nz,nx);
+    var pattern=0.5+0.5*Math.sin(lat*5.0)*Math.cos(lon*4.0);
+    var f=0.03+pattern*0.60+(Math.random()-0.5)*0.03;
+    freq[i]=Math.max(0,Math.min(0.66,f));
+    seed[i]=Math.random();
+    scl[i]=scaleMin+Math.random()*(scaleMax-scaleMin);
+  }
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('aFreq',new THREE.Float32BufferAttribute(freq,1));
+  g.setAttribute('aSeed',new THREE.Float32BufferAttribute(seed,1));
+  g.setAttribute('aScale',new THREE.Float32BufferAttribute(scl,1));
+  var mat=shellMaterial(sizeMul,0);
+  var pts=new THREE.Points(g,mat);
+  pts.userData.mat=mat;
+  return pts;
+}
+
+function buildOrb(){
+  orb=new THREE.Group();
+  // 三层体积球壳（疏密+半径不同，构成一个有厚度的整体）
+  var s1=makeShell(90000, 96, 0.30,0.75, 0.85, 0.02);
+  var s2=makeShell(55000,120, 0.26,0.62, 0.72, 0.05);
+  var s3=makeShell(30000,150, 0.22,0.52, 0.60, 0.10);
+  shells=[s1,s2,s3];
+  orb.add(s1);orb.add(s2);orb.add(s3);
+
+  // 内部发光核（收缩为紧致核心，让流动生命体成为主体包裹它）
+  var hg=new THREE.IcosahedronGeometry(34,28);
+  var hmat=new THREE.ShaderMaterial({
+    uniforms:{uTime:{value:0},uFlow:{value:0},uBass:{value:0},uMid:{value:0},uTreble:{value:0},
+      uBeat:{value:0},uHue:{value:0.58},uFreqTex:{value:freqTex}},
+    vertexShader:[SNOISE,
+      "uniform float uTime,uFlow,uBass,uMid,uTreble,uBeat;uniform sampler2D uFreqTex;",
+      "varying vec3 vN;varying vec3 vV;varying float vD;varying float vAmp;",
+      "float fbm(vec3 p){float a=0.0,amp=0.5;for(int i=0;i<4;i++){a+=amp*snoise(p);p*=2.02;amp*=0.5;}return a;}",
+      "void main(){",
+      "  vec3 dir=normalize(position);",
+      "  float lat=asin(clamp(dir.y,-1.0,1.0));float lon=atan(dir.z,dir.x);",
+      "  float fpat=0.5+0.5*sin(lat*4.0)*cos(lon*3.0);",                 // 与外壳呼应的频率分区
+      "  float fslot=clamp(0.03+fpat*0.6,0.0,0.66);",
+      "  float amp=texture2D(uFreqTex,vec2(fslot,0.5)).r;vAmp=amp;",
+      "  float flow=fbm(dir*1.8+vec3(0.0,uFlow*0.6,uFlow));",           // 翻涌，相位随能量推进
+      "  float ripple=snoise(dir*7.0+vec3(uFlow*2.0))*uTreble;",        // 高频细颤
+      "  float wave=sin(lat*6.0-uFlow*3.0)*uMid;",                      // 中频沿纬度行进的波
+      "  float disp=flow*(7.0+uBass*36.0)",                             // 低频翻涌鼓胀
+      "           +amp*amp*28.0",                                       // 该区频段越强越鼓起
+      "           +ripple*4.5 +wave*5.5 +uBeat*9.0;",                   // 细颤+行波+节拍脉冲
+      "  vD=disp;vec3 p=position+dir*disp;",
+      "  vN=normalize(normalMatrix*normal);",
+      "  vec4 mv=modelViewMatrix*vec4(p,1.0);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}"].join("\n"),
+    fragmentShader:[HSL,
+      "uniform float uHue,uBass;varying vec3 vN;varying vec3 vV;varying float vD;varying float vAmp;",
+      "void main(){float fr=pow(1.0-max(dot(vN,vV),0.0),2.4);",
+      " float h=mod(uHue+vD*0.008+fr*0.2+vAmp*0.1,1.0);",
+      " vec3 base=hsl2rgb(h,0.85,0.14+vAmp*0.14);",
+      " vec3 rim=hsl2rgb(mod(h+0.5,1.0),0.9,0.34);",
+      " vec3 col=mix(base*(0.22+uBass*0.5),rim,fr)+rim*fr*0.6+base*vAmp*0.5;",  // 被声音激活的区域提亮
+      " gl_FragColor=vec4(col,1.0);}"].join("\n")
+  });
+  heart=new THREE.Mesh(hg,hmat);orb.add(heart);
+
+  heartWire=new THREE.LineSegments(
+    new THREE.WireframeGeometry(new THREE.SphereGeometry(64,64,40)),
+    new THREE.LineBasicMaterial({color:0x466096,transparent:true,opacity:0.05,blending:THREE.AdditiveBlending,depthWrite:false}));
+  orb.add(heartWire);
+
+  // 内部曲旋流动生命体：curl-noise 驱动的 4 万颗粒子在球内持续翻涌，流速由音乐能量控制
+  buildFlowCreature();
+
+  scene.add(orb);
+}
+
+// ---------- 曲旋流动生命体 ----------
+function buildFlowCreature(){
+  var pos=new Float32Array(flowN*3),freq=new Float32Array(flowN),
+      seed=new Float32Array(flowN),scl=new Float32Array(flowN),base=new Float32Array(flowN*3);
+  for(var i=0;i<flowN;i++){
+    // 球体内均匀分布
+    var r=Math.pow(Math.random(),0.45)*66;
+    var th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
+    var x=r*Math.sin(ph)*Math.cos(th),y=r*Math.cos(ph)*0.85,z=r*Math.sin(ph)*Math.sin(th);
+    pos[i*3]=base[i*3]=x;pos[i*3+1]=base[i*3+1]=y;pos[i*3+2]=base[i*3+2]=z;
+    var ang=Math.atan2(z,x),lat=Math.asin(Math.max(-1,Math.min(1,y/(r||0.01))));
+    var fpat=0.5+0.5*Math.sin(lat*5.0)*Math.cos(ang*4.0);
+    freq[i]=Math.max(0,Math.min(0.66,0.04+fpat*0.62));
+    seed[i]=Math.random();scl[i]=0.5+Math.random()*1.3;
+  }
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('aFreq',new THREE.Float32BufferAttribute(freq,1));
+  g.setAttribute('aSeed',new THREE.Float32BufferAttribute(seed,1));
+  g.setAttribute('aScale',new THREE.Float32BufferAttribute(scl,1));
+  g.setAttribute('aBase',new THREE.Float32BufferAttribute(base,3));
+  flowMat=new THREE.ShaderMaterial({
+    uniforms:{
+      uFreqTex:{value:freqTex},uTime:{value:0},uFlow:{value:0},
+      uBass:{value:0},uMid:{value:0},uTreble:{value:0},uBeat:{value:0},
+      uTex:{value:softTex()},uPix:{value:renderer.getPixelRatio()},uHue:{value:0.58}
+    },
+    vertexShader:[
+      SNOISE,CURL,HSL,
+      "uniform sampler2D uFreqTex;uniform float uTime,uFlow,uBass,uMid,uTreble,uBeat,uPix,uHue;",
+      "attribute float aFreq,aSeed,aScale;attribute vec3 aBase;varying vec3 vC;varying float vA;",
+      "void main(){",
+      "  float amp=texture2D(uFreqTex,vec2(aFreq,0.5)).r;vA=amp;",
+      // flowSpeed 跟着音乐走：整体+低频+中频 → 越嗨流得越快
+      "  float speed=0.5+uBass*5.5+uMid*3.6+uTreble*2.0;",
+      "  float seed=aSeed*6.283;",
+      // 曲旋噪声驱动位置：粒子沿无散度旋涡流场流动（更强、更黏稠的流动性）
+      "  float sp=uFlow*speed*0.2;",
+      "  vec3 cp=aBase+vec3(sin(seed)*sp,cos(seed)*sp,seed*0.2);",
+      "  vec3 curl=curlNoise(cp*0.05+vec3(uTime*0.3));",
+      "  vec3 curl2=curlNoise(cp*0.13+vec3(uTime*0.5+11.0));",           // 二阶湍流，细节更丰富
+      // 径向撑胀改用 amp（非 amp*amp）并降幅 → 突刺更圆润不尖锐
+      "  float push=amp*(7.0+uBass*13.0)+uBeat*4.0;",
+      "  vec3 p=aBase",
+      "        + curl*(4.0+uBass*9.0+amp*5.0)",                         // 主流场（流动为主）
+      "        + curl2*(2.0+uMid*5.0)",                                 // 湍流细节
+      "        + normalize(aBase+0.001)*push;",                         // 柔和径向呼吸
+      // 色相：更宽的色域 + 更高饱和 → 绚丽
+      "  float h=mod(uHue+aFreq*0.85+amp*0.35+length(curl)*0.25+length(p)*0.006,1.0);",
+      "  vC=hsl2rgb(h,0.95,0.16+amp*0.32);",
+      "  vec4 mv=modelViewMatrix*vec4(p,1.0);",
+      "  gl_PointSize=aScale*(0.35+amp*2.0+uBeat*1.0)*(190.0/-mv.z)*uPix;",
+      "  gl_Position=projectionMatrix*mv;}"
+    ].join("\n"),
+    fragmentShader:[
+      "uniform sampler2D uTex;varying vec3 vC;varying float vA;",
+      "void main(){vec4 t=texture2D(uTex,gl_PointCoord);if(t.a<0.02)discard;",
+      "  vec3 col=vC*(0.35+vA*1.2);float a=t.a*(0.22+vA*0.6);",
+      "  gl_FragColor=vec4(col,1.0)*a;}"
+    ].join("\n"),
+    transparent:true,blending:THREE.AdditiveBlending,depthWrite:false
+  });
+  flowCreature=new THREE.Points(g,flowMat);orb.add(flowCreature);
+}
+
+function buildLights(){
+  scene.add(new THREE.AmbientLight(0x223349,0.4));
+  var p1=new THREE.PointLight(0x4a7aff,0.9,2000);scene.add(p1);window._cl=p1;
+}
+
+function buildPost(){
+  composer=new THREE.EffectComposer(renderer);
+  composer.addPass(new THREE.RenderPass(scene,camera));
+  bloom=new THREE.UnrealBloomPass(new THREE.Vector2(W,H),0.7,0.6,0.4);
+  bloom.threshold=0.42;bloom.strength=0.62;bloom.radius=0.5;   // 克制的辉光
+  composer.addPass(bloom);
+  composer.addPass(new THREE.ShaderPass(THREE.GammaCorrectionShader));
+}
+
+// ==================== 音频 ====================
+function ensureCtx(){
+  if(!audioCtx){
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    analyser=audioCtx.createAnalyser();analyser.fftSize=4096;analyser.smoothingTimeConstant=0.8;
+    freqData=new Uint8Array(analyser.frequencyBinCount);timeData=new Uint8Array(analyser.frequencyBinCount);
+  }
+  if(audioCtx.state==='suspended')audioCtx.resume();
+}
+function loadFile(file){
+  ensureCtx();if(audioEl)audioEl.pause();
+  audioEl=new Audio(URL.createObjectURL(file));audioEl.loop=true;
+  mediaSource=audioCtx.createMediaElementSource(audioEl);mediaSource.connect(analyser);analyser.connect(audioCtx.destination);
+  audioEl.play().then(function(){playing=true;setCoverOff();updatePlayBtn();showTrack(file.name.replace(/\.[^.]+$/,''));}).catch(function(e){console.warn(e);});
+}
+function useMic(){
+  ensureCtx();
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    micStream=stream;mediaSource=audioCtx.createMediaStreamSource(stream);mediaSource.connect(analyser);
+    playing=true;setCoverOff();updatePlayBtn();showTrack('◉ 麦克风现场采集');
+  }).catch(function(e){console.warn('麦克风不可用：'+e.message);});
+}
+function analyze(){
+  if(!analyser)return;
+  analyser.getByteFrequencyData(freqData);analyser.getByteTimeDomainData(timeData);
+  var n=freqData.length;
+  for(var i=0;i<FTN;i++){
+    var norm=i/FTN,idx=Math.floor(Math.pow(norm,1.7)*n*0.75);if(idx>=n)idx=n-1;
+    var v=freqData[idx];freqTexData[i*4]=v;freqTexData[i*4+1]=v;freqTexData[i*4+2]=v;freqTexData[i*4+3]=255;
+  }
+  freqTex.needsUpdate=true;
+  var bEnd=Math.floor(n*0.05),mEnd=Math.floor(n*0.28),bs=0,ms=0,ts=0;
+  for(var i=0;i<bEnd;i++)bs+=freqData[i];
+  for(var i=bEnd;i<mEnd;i++)ms+=freqData[i];
+  for(var i=mEnd;i<n;i++)ts+=freqData[i];
+  bass=bs/(bEnd*255);mid=ms/((mEnd-bEnd)*255);treble=ts/((n-mEnd)*255);
+  overall=(bass*1.3+mid+treble*0.8)/3;
+  bassS+=(bass-bassS)*0.28;midS+=(mid-midS)*0.22;trebleS+=(treble-trebleS)*0.32;overallS+=(overall-overallS)*0.25;
+  if(bass>bassS*1.22&&bass>0.4&&beatHold<=0){beat=1;beatHold=9;camPunch=1;camRoll=(Math.random()-0.5)*0.03;spawnShock();}
+  else beat*=0.9;
+  if(beatHold>0)beatHold--;
+}
+
+// ---------- 3D 冲击波（球面波，非平面）----------
+function spawnShock(){
+  var col=new THREE.Color().setHSL(hueBase,0.75,0.45);
+  var w=new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.SphereGeometry(80,72,44)),
+    new THREE.LineBasicMaterial({color:col,transparent:true,opacity:0.28,blending:THREE.AdditiveBlending,depthWrite:false}));
+  scene.add(w);shockwaves.push({mesh:w,life:0});
+}
+function updateShock(dt){
+  for(var i=shockwaves.length-1;i>=0;i--){
+    var s=shockwaves[i];s.life+=dt;var sc=1+s.life*4.0;
+    s.mesh.scale.setScalar(sc);s.mesh.material.opacity=Math.max(0,0.28-s.life*0.34);
+    s.mesh.rotation.y+=dt*0.3;
+    if(s.life>0.85){scene.remove(s.mesh);s.mesh.geometry.dispose();s.mesh.material.dispose();shockwaves.splice(i,1);}
+  }
+}
+
+// ==================== 流体鲸鱼 ====================
+// 程序化生成一头鲸鱼的点云剪影：纺锤状身体 + 后掠尾鳍 + 一对胸鳍
+function makeWhaleGeometry(type){
+  var pts=[];                              // [x,y,z]
+  var scl=[];                              // 每点尺寸
+  var L, R, finLen, flukeW, headFull;
+  if(type===0){ L=200; R=26; finLen=34;  flukeW=78;  headFull=0.85; }   // 蓝鲸：修长
+  else if(type===1){ L=150; R=34; finLen=74; flukeW=70; headFull=1.05; } // 座头鲸：短壮·长胸鳍
+  else { L=140; R=40; finLen=26; flukeW=58; headFull=1.35; }            // 抹香鲸：巨钝头
+  function push(x,y,z,s){pts.push(x,y,z);scl.push(s);}
+  // ---- 身体（体积云，偏表面）----
+  var NB=5200;
+  for(var i=0;i<NB;i++){
+    var t=Math.random();                                   // 0鼻→1尾
+    var x=L*(0.5-t);
+    var head=Math.min(1,t/0.12);                           // 圆钝鼻端渐起
+    var taper=1-smooth(0.4,0.98,t);                        // 向尾渐细
+    var g=R*(0.35+0.65*head*headFull)*(0.10+0.90*taper);
+    var th=Math.random()*Math.PI*2;
+    var rr=g*Math.pow(Math.random(),0.34);
+    var y=Math.sin(th)*rr - g*0.10;                        // 略腹部下沉
+    var z=Math.cos(th)*rr*0.9;
+    push(x,y,z,0.7+Math.random()*1.1);
+  }
+  // ---- 尾鳍（水平双叶，后掠）----
+  var NF=1300;
+  for(var i=0;i<NF;i++){
+    var u=(Math.random()*2-1), v=Math.random();
+    var zf=u*flukeW*(0.28+0.72*v);
+    var xf=-L*0.5 - v*flukeW*0.42 - Math.abs(u)*flukeW*0.18;
+    if(Math.abs(u)<0.12) xf+=flukeW*0.16;                  // 中央凹口
+    var yf=(Math.random()-0.5)*flukeW*0.05;
+    push(xf,yf,zf,0.6+Math.random()*0.8);
+  }
+  // ---- 一对胸鳍（体侧后掠）----
+  var NP=640;
+  for(var s=-1;s<=1;s+=2){
+    for(var i=0;i<NP;i++){
+      var w=Math.random();
+      var base=L*0.16;
+      var xf=base - w*finLen*0.55;
+      var zf=s*(R*0.7 + w*finLen);
+      var yf=-w*R*0.25 + (Math.random()-0.5)*finLen*0.06;
+      push(xf,yf,zf,0.5+Math.random()*0.7);
+    }
+  }
+  var n=scl.length;
+  var pos=new Float32Array(pts), sa=new Float32Array(scl), seed=new Float32Array(n);
+  for(var i=0;i<n;i++)seed[i]=Math.random();
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('aScale',new THREE.Float32BufferAttribute(sa,1));
+  g.setAttribute('aSeed',new THREE.Float32BufferAttribute(seed,1));
+  return g;
+}
+function smooth(a,b,x){x=Math.max(0,Math.min(1,(x-a)/(b-a)));return x*x*(3-2*x);}
+
+function whaleMaterial(hue){
+  return new THREE.ShaderMaterial({
+    uniforms:{
+      uTime:{value:0},uTurb:{value:2.0},uOpacity:{value:0},uHue:{value:hue},
+      uTex:{value:softTex()},uPix:{value:renderer.getPixelRatio()},uSize:{value:1.0}
+    },
+    vertexShader:[
+      SNOISE,CURL,
+      "uniform float uTime,uTurb,uPix,uSize;attribute float aScale,aSeed;",
+      "varying float vA;",
+      "void main(){",
+      "  vA=aSeed;",
+      "  vec3 flow=curlNoise(position*0.018+vec3(0.0,uTime*0.5,uTime*0.35));",  // 曲旋流体扰动
+      "  vec3 p=position+flow*uTurb;",                                          // 临终 uTurb 增大→化为流体消散
+      "  vec4 mv=modelViewMatrix*vec4(p,1.0);",
+      "  gl_PointSize=aScale*uSize*(250.0/-mv.z)*uPix;",
+      "  gl_Position=projectionMatrix*mv;}"
+    ].join("\n"),
+    fragmentShader:[
+      "uniform sampler2D uTex;uniform float uOpacity,uHue;varying float vA;",
+      "vec3 hsl(float h,float s,float l){vec3 r=clamp(abs(mod(h*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0,0.0,1.0);return l+s*(r-0.5)*(1.0-abs(2.0*l-1.0));}",
+      "void main(){vec4 t=texture2D(uTex,gl_PointCoord);if(t.a<0.02)discard;",
+      "  float h=mod(uHue+vA*0.06,1.0);",
+      "  vec3 col=hsl(h,0.85,0.55);",
+      "  gl_FragColor=vec4(col,1.0)*t.a*uOpacity;}"
+    ].join("\n"),
+    transparent:true,blending:THREE.AdditiveBlending,depthWrite:false
+  });
+}
+
+// 从生命体表面撕裂出一头流体鲸鱼——抽离→成形→涌散
+function spawnWhale(intensity){
+  if(whales.length>=4)return;
+  var type=Math.floor(Math.random()*3);
+  var hue=(hueBase+ (Math.random()-0.5)*0.18 +1)%1;
+  var mat=whaleMaterial(hue);
+  var mesh=new THREE.Points(makeWhaleGeometry(type),mat);
+  var th=Math.random()*Math.PI*2, ph=Math.acos(Math.random()*2-1);   // 全方向均匀分布
+  var dir=new THREE.Vector3(Math.sin(ph)*Math.cos(th),Math.cos(ph),Math.sin(ph)*Math.sin(th)).normalize();
+  mesh.position.copy(dir).multiplyScalar(88+Math.random()*14);   // 紧贴球体表面诞生
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),dir);
+  mesh.rotateOnAxis(new THREE.Vector3(1,0,0),Math.random()*Math.PI*2);
+  mesh.scale.setScalar(0.020);                                   // 出生即可见的流体团
+  mat.uniforms.uOpacity.value=0.42;                              // 首帧即可见
+  mat.uniforms.uTurb.value=26;                                   // 首帧即流体扰动
+  scene.add(mesh);
+  whales.push({mesh:mesh,mat:mat,dir:dir,life:0,
+    maxLife:3.4+Math.random()*1.8,
+    speed:30+intensity*70,
+    grow:0.22+intensity*0.25,
+    roll:(Math.random()-0.5)*0.3});
+}
+
+function updateWhales(dt){
+  for(var i=whales.length-1;i>=0;i--){
+    var w=whales[i];w.life+=dt;var f=w.life/w.maxLife;
+
+    // 四阶段：剥离(0→0.12)→成形(0.12→0.30)→旅行(0.30→0.60)→涌散(0.60→1)
+    var peel=smooth(0.0,0.12,f);          // 0→1 从球体表面撕离
+    var form=smooth(0.12,0.30,f);         // 0→1 凝聚成形
+    var dissolve=smooth(0.60,0.82,f);     // 0→1 涌散
+    var done=smooth(0.82,1.0,f);          // 0→1 彻底消散
+
+    // 音乐驱动的律动调制（实时跟随音乐能量）
+    var musicGrow=1.0+bassS*0.8+beat*0.5;
+    var musicSpeed=0.7+overallS*1.0+beat*0.6;
+    var musicWob=overallS*3.5+beat*1.8;
+
+    // 位置：匀速连续外移，全程不封顶不停顿(消散在移动中完成)
+    var base=88+14;
+    var outDist=base+f*w.speed*musicSpeed*3.2;
+    w.mesh.position.copy(w.dir).multiplyScalar(outDist);
+    var distNow=w.mesh.position.length();
+    // 律动摆动：剥离时强烈→成形后骤减→越远越弱
+    var wobDecay=(1-form*0.97)*(1-smooth(80,300,distNow));
+    // 律动只沿径向向外推，不回收
+    var wobVal=Math.sin(w.life*3.8)*dt*musicWob*wobDecay;
+    if(wobVal>0){w.mesh.position.x+=w.dir.x*wobVal;w.mesh.position.y+=w.dir.y*wobVal;w.mesh.position.z+=w.dir.z*wobVal;}
+
+    // 尺寸：剥离时已是可见流体团→成形中快速增长→旅行中稳态小增（受音乐加速）
+    var s=0.020 + peel*w.grow*musicGrow*0.20         // 剥离：已有体积，微增
+         + form*w.grow*musicGrow*0.55                // 成形：大幅增长
+         + smooth(0.30,0.55,f)*w.grow*musicGrow*0.15;// 旅行：缓缓膨大
+    w.mesh.scale.setScalar(s);
+
+    w.mesh.rotateOnAxis(new THREE.Vector3(1,0,0),w.roll*dt);
+
+    var u=w.mat.uniforms;
+    u.uTime.value+=dt;
+    u.uSize.value=(1.0+form*0.5)*(1-dissolve*0.55);
+
+    // 湍流：剥离时高(可见流体团)→成形时骤降(凝聚为鲸)→旅行低(清晰)→涌散高(化为流体)
+    // 涌散湍流随低频能量走→低频越强消散越剧烈
+    var turb=26*(1-peel)*(1-form*0.5)       // 剥离：强烈流体扰动
+           + (1.6+1.8*form)*(1-dissolve)    // 成形后：低湍流，清晰形体
+           + 24*dissolve*(0.5+bassS*1.2);   // 涌散：随bass增强湍流
+    u.uTurb.value=turb;
+
+    // 透明度：始终可见(剥离时就是流体团)→涌散时淡出
+    var op=0.42+peel*0.28+form*0.2;        // 剥离起始即有 0.42→成形后达 0.9
+    op*=(1-dissolve)*(1-done);             // 涌散段淡出
+    var dist=w.mesh.position.length();
+    op*=(1-smooth(250,520,dist));          // 太远仍淡
+    u.uOpacity.value=Math.min(0.92,op);
+
+    if(f>=1){scene.remove(w.mesh);w.mesh.geometry.dispose();w.mat.dispose();whales.splice(i,1);}
+  }
+}
+var whaleCooldown=0;
+
+// ==================== 水母系统 ====================
+function makeJellyGeometry(type){
+  var pts=[],scl=[];
+  function push(x,y,z,s){pts.push(x,y,z);scl.push(s);}
+  if(type===undefined)type=0;
+  // type0: 经典钟形水母  type1: 宽扁圆盘水母  type2: 高窄深海长须水母
+  var R, TENT, tentLen, bellFlat;
+  if(type===0){R=48; TENT=8;  tentLen=2.6; bellFlat=0.82;}           // 经典
+  else if(type===1){R=62; TENT=14; tentLen=1.8; bellFlat=0.55;}      // 宽盘
+  else {R=34; TENT=6;  tentLen=4.0; bellFlat=0.95;}                  // 高窄长须
+
+  // 伞盖
+  var domeN=type===1?1800:(type===2?2200:2600);
+  for(var i=0;i<domeN;i++){
+    var u=Math.random(), ang=Math.random()*Math.PI*2;
+    var ph=u*Math.PI*0.5;
+    var rr=Math.sin(ph)*R;
+    var y=Math.cos(ph)*R*bellFlat;
+    var flare=Math.pow(Math.sin(ph),3)*R*0.12;
+    push(Math.cos(ang)*(rr+flare), y, Math.sin(ang)*(rr+flare), 0.6+Math.random()*1.0);
+  }
+  // 伞盖内膜
+  var innerN=type===1?600:(type===2?700:900);
+  for(var i=0;i<innerN;i++){
+    var ang=Math.random()*Math.PI*2, ph=Math.random()*Math.PI*0.5;
+    var rr=Math.sin(ph)*R*0.82, y=Math.cos(ph)*R*0.68;
+    push(Math.cos(ang)*rr, y, Math.sin(ang)*rr, 0.5+Math.random()*0.7);
+  }
+  // 触须
+  var tentPts=type===2?340:420;
+  for(var tb=0;tb<TENT;tb++){
+    var a0=tb/TENT*Math.PI*2, br=R*(type===1?0.35:0.5);
+    var bx=Math.cos(a0)*br, bz=Math.sin(a0)*br;
+    for(var j=0;j<tentPts;j++){
+      var t=j/tentPts;
+      var sway=Math.sin(t*Math.PI*2.0+tb)*R*(type===1?0.22:0.16)*t;
+      var x=bx*(1-t*0.3)+Math.cos(a0+1.57)*sway;
+      var z=bz*(1-t*0.3)+Math.sin(a0+1.57)*sway;
+      var y=-t*R*tentLen;
+      push(x+(Math.random()-0.5)*3, y+(Math.random()-0.5)*4, z+(Math.random()-0.5)*3, 0.4+Math.random()*0.7);
+    }
+  }
+  // type1额外：伞缘短须环（一圈细密小触须）
+  if(type===1){
+    for(var k=0;k<800;k++){
+      var ang=Math.random()*Math.PI*2;
+      var rr=R*0.92+Math.random()*12;
+      push(Math.cos(ang)*rr, (Math.random()-0.5)*8, Math.sin(ang)*rr, 0.35+Math.random()*0.55);
+    }
+  }
+  // 中央短口腕
+  var wristN=type===0?600:(type===2?400:500);
+  for(var k=0;k<wristN;k++){
+    var ang=Math.random()*Math.PI*2, t=Math.random();
+    var rr=R*(type===2?0.15:0.22)*(1-t*0.5);
+    push(Math.cos(ang)*rr,-t*R*(type===2?1.6:1.1),Math.sin(ang)*rr,0.45+Math.random()*0.7);
+  }
+  var n=scl.length;
+  var pos=new Float32Array(pts), sa=new Float32Array(scl), seed=new Float32Array(n);
+  for(var i=0;i<n;i++)seed[i]=Math.random();
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('aScale',new THREE.Float32BufferAttribute(sa,1));
+  g.setAttribute('aSeed',new THREE.Float32BufferAttribute(seed,1));
+  return g;
+}
+function jellyMaterial(hue){
+  return new THREE.ShaderMaterial({
+    uniforms:{uTime:{value:0},uTurb:{value:2.0},uOpacity:{value:0},uHue:{value:hue},uTex:{value:softTex()},uPix:{value:renderer.getPixelRatio()},uSize:{value:1.0},uPulse:{value:0}},
+    vertexShader:[SNOISE,CURL,"uniform float uTime,uTurb,uPix,uSize,uPulse;attribute float aScale,aSeed;varying float vA;",
+      "void main(){vA=aSeed;",
+      "  vec3 pp=position;",
+      "  float rc=length(position.xz);",
+      "  pp.xz*=(1.0+uPulse*0.18);",                        // 伞盖搏动收放
+      "  pp.y+=uPulse*rc*0.10;",
+      "  vec3 flow=curlNoise(pp*0.02+vec3(0.0,uTime*0.4,uTime*0.3));",
+      "  vec3 p=pp+flow*uTurb;vec4 mv=modelViewMatrix*vec4(p,1.0);",
+      "  gl_PointSize=aScale*uSize*(260.0/-mv.z)*uPix;gl_Position=projectionMatrix*mv;}"].join("\n"),
+    fragmentShader:["uniform sampler2D uTex;uniform float uOpacity,uHue;varying float vA;",
+      "vec3 hsl(float h,float s,float l){vec3 r=clamp(abs(mod(h*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0,0.0,1.0);return l+s*(r-0.5)*(1.0-abs(2.0*l-1.0));}",
+      "void main(){vec4 t=texture2D(uTex,gl_PointCoord);if(t.a<0.02)discard;",
+      "float h=mod(uHue+vA*0.05,1.0);vec3 col=hsl(h,0.82,0.56);",
+      "gl_FragColor=vec4(col,1.0)*t.a*uOpacity;}"].join("\n"),
+    transparent:true,blending:THREE.AdditiveBlending,depthWrite:false
+  });
+}
+function spawnJelly(intensity){
+  if(jellies.length>=4)return;
+  var hue=(0.50+Math.random()*0.16)%1;    // 青蓝→靛(水母冷光)
+  var type=Math.floor(Math.random()*3);   // 随机三种形态
+  var mat=jellyMaterial(hue);
+  var mesh=new THREE.Points(makeJellyGeometry(type),mat);
+  var th=Math.random()*Math.PI*2, ph=Math.acos(Math.random()*2-1);
+  var dir=new THREE.Vector3(Math.sin(ph)*Math.cos(th),Math.cos(ph),Math.sin(ph)*Math.sin(th)).normalize();
+  mesh.position.copy(dir).multiplyScalar(84+Math.random()*14);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);   // 伞顶朝外
+  mesh.rotateOnAxis(new THREE.Vector3(0,1,0),Math.random()*Math.PI*2);
+  mesh.scale.setScalar(0.014);
+  mat.uniforms.uOpacity.value=0.40;mat.uniforms.uTurb.value=26;
+  scene.add(mesh);
+  jellies.push({mesh:mesh,mat:mat,dir:dir,life:0,maxLife:4.6+Math.random()*2.0,
+    speed:32+intensity*66,grow:0.11+intensity*0.12,pulse:0,roll:(Math.random()-0.5)*0.2,puffed:false});
+}
+function updateJellies(dt){
+  for(var i=jellies.length-1;i>=0;i--){
+    var jf=jellies[i];jf.life+=dt;var f=jf.life/jf.maxLife;
+    var peel=smooth(0.0,0.10,f),form=smooth(0.10,0.30,f);
+    var dissolve=smooth(0.60,0.88,f),done=smooth(0.82,1.0,f);
+
+    // 音乐驱动的律动调制
+    var musicGrow=1.0+bassS*0.7+beat*0.5;
+    var musicSpeed=0.7+overallS*1.0+beat*0.5;
+    var musicWob=overallS*2.0+beat*1.0;
+
+    var base=84+14;
+    jf.mesh.position.copy(jf.dir).multiplyScalar(base+f*jf.speed*musicSpeed*3.0);
+    var distNow=jf.mesh.position.length();
+    var wobDecay=(1-form*0.97)*(1-smooth(80,300,distNow));
+    // 律动只沿径向向外推，不回收
+    var wobVal=Math.sin(jf.life*3.2)*dt*musicWob*wobDecay;
+    if(wobVal>0){jf.mesh.position.x+=jf.dir.x*wobVal;jf.mesh.position.y+=jf.dir.y*wobVal;jf.mesh.position.z+=jf.dir.z*wobVal;}
+    // 消散：形状自身粒子被湍流溶解
+    // 2026-08: 不再喷发背景光点粒子(puff)——用户要求水母背景和鲸鱼一样干净，
+    // 仅保留形状粒子自身的湍流淡出（上方 dissolve 已处理），避免背景累积"星星"
+    // if(!jf.puffed && f>=0.84){jf.puffed=true;spawnPuff(jf.mesh.position,(0.50+Math.random()*0.16)%1,280);}
+
+    var s=0.014+peel*jf.grow*musicGrow*0.14+form*jf.grow*musicGrow*0.62+smooth(0.30,0.7,f)*jf.grow*musicGrow*0.12;
+    jf.mesh.scale.setScalar(s);
+    jf.mesh.rotateOnAxis(new THREE.Vector3(0,1,0),jf.roll*dt);
+    var u=jf.mat.uniforms;u.uTime.value+=dt;
+    jf.pulse=Math.sin(jf.life*3.2)*0.5+0.5;
+    u.uPulse.value=(jf.pulse*(0.5+bassS*1.2+beat*0.8))*form*(1-dissolve);
+    u.uSize.value=(1.0+form*0.4)*(1-dissolve*0.55);
+    // 湍流：剥离高→成形低（清晰）→旅行中逐渐漂散→涌散水中溶解
+    var turb=30*(1-peel)*(1-form*0.5)
+           + (1.0+2.5*form)*(1-dissolve)
+           + 20*dissolve*(0.7+bassS*1.0);
+    u.uTurb.value=turb;
+    var op=0.38+peel*0.28+form*0.30;op*=(1-dissolve)*(1-done*0.9);
+    op*=(1-smooth(280,520,distNow));
+    u.uOpacity.value=Math.min(0.92,op);
+    if(f>=1){scene.remove(jf.mesh);jf.mesh.geometry.dispose();jf.mat.dispose();jellies.splice(i,1);}
+  }
+}
+
+// ==================== 音乐符号 ====================
+var NOTE_CHARS=['\u266A','\u266B','\u266C','\u2669','\uD834\uDD1E','\u266D']; // ♪ ♫ ♬ ♩ 𝄞 ♭
+function noteTex(ch){
+  if(noteTexCache[ch])return noteTexCache[ch];
+  var s=128,c=document.createElement('canvas');c.width=c.height=s;
+  var x=c.getContext('2d');
+  x.clearRect(0,0,s,s);
+  x.font='bold 92px -apple-system,"PingFang SC",serif';
+  x.textAlign='center';x.textBaseline='middle';
+  x.shadowColor='rgba(255,255,255,0.9)';x.shadowBlur=18;
+  x.fillStyle='#ffffff';
+  x.fillText(ch,s/2,s/2+4);
+  var t=new THREE.CanvasTexture(c);t.minFilter=THREE.LinearFilter;
+  noteTexCache[ch]=t;return t;
+}
+function spawnNote(intensity){
+  if(notes.length>=7)return;
+  var ch=NOTE_CHARS[Math.floor(Math.random()*NOTE_CHARS.length)];
+  var hue=(hueBase+(Math.random()-0.5)*0.3+1)%1;
+  var col=new THREE.Color().setHSL(hue,0.85,0.62);
+  var mat=new THREE.SpriteMaterial({map:noteTex(ch),color:col,transparent:true,
+    opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
+  var sp=new THREE.Sprite(mat);
+  var th=Math.random()*Math.PI*2, ph=Math.acos(Math.random()*2-1);   // 全方向均匀
+  var dir=new THREE.Vector3(Math.sin(ph)*Math.cos(th),Math.cos(ph),Math.sin(ph)*Math.sin(th)).normalize();
+  sp.position.copy(dir).multiplyScalar(80+Math.random()*20);
+  var sz=15+Math.random()*11;sp.scale.set(sz,sz,1);
+  scene.add(sp);
+  notes.push({sp:sp,mat:mat,dir:dir,life:0,
+    maxLife:2.6+Math.random()*1.4,
+    speed:20+intensity*46,
+    spin:(Math.random()-0.5)*1.2,
+    sz:sz, hue:hue, wob:Math.random()*6.28, puffed:false});
+}
+function updateNotes(dt,t){
+  for(var i=notes.length-1;i>=0;i--){
+    var m=notes[i];m.life+=dt;var f=m.life/m.maxLife;
+    // 受生命体律动影响：低频/节拍推动外移
+    var rhythm=0.55+bassS*1.5+beat*1.3;
+    m.sp.position.addScaledVector(m.dir,m.speed*rhythm*dt);
+    m.speed*=(1-dt*0.15);
+    // 漂浮摆动，幅度随整体能量脉动
+    m.sp.position.y+=Math.sin(t*1.8+m.wob)*dt*(3.0+overallS*11.0);
+    m.mat.rotation+=m.spin*dt*(1.0+beat*1.6);
+    var life=smooth(0.0,0.14,f);
+    var dissolve=smooth(0.60,1.0,f);
+    // 消散：进入消散期时炸开成细粒子（真正的粒子消散）
+    if(!m.puffed && f>=0.62){m.puffed=true;spawnPuff(m.sp.position,m.hue,m.sz);}
+    var sc=m.sz*(0.7+f*0.4)*(1.0+dissolve*0.6);
+    m.sp.scale.set(sc,sc,1);
+    var far=1-smooth(200,480,m.sp.position.length());
+    m.mat.opacity=life*(1-dissolve)*far*0.92;
+    if(f>=1){scene.remove(m.sp);m.mat.dispose();notes.splice(i,1);}
+  }
+}
+
+// ==================== 粒子消散 puff ====================
+function spawnPuff(pos,hue,sz,dir){
+  var N=typeof sz==='number'?sz:70;
+  var vel=new Float32Array(N*3), scl=new Float32Array(N), seed=new Float32Array(N);
+  for(var i=0;i<N;i++){
+    var th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
+    var sp=10+Math.random()*38;                         // 更快扩散
+    var sx=Math.sin(ph)*Math.cos(th)*sp;
+    var sy=Math.cos(ph)*sp+6;
+    var szv=Math.sin(ph)*Math.sin(th)*sp;
+    // 有方向时叠加风偏：粒子整体向行进方向吹散
+    if(dir){
+      var wind=14+Math.random()*18;
+      sx+=dir.x*wind; sy+=dir.y*wind; szv+=dir.z*wind;
+    }
+    vel[i*3]=sx; vel[i*3+1]=sy; vel[i*3+2]=szv;
+    scl[i]=0.7+Math.random()*1.6; seed[i]=Math.random();
+  }
+  var g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(N*3),3));
+  g.setAttribute('aVel',new THREE.Float32BufferAttribute(vel,3));
+  g.setAttribute('aScale',new THREE.Float32BufferAttribute(scl,1));
+  var mat=new THREE.ShaderMaterial({
+    uniforms:{uT:{value:0},uOpacity:{value:1},uHue:{value:hue},uTex:{value:softTex()},uPix:{value:renderer.getPixelRatio()}},
+    vertexShader:["uniform float uT,uPix;attribute vec3 aVel;attribute float aScale;",
+      "void main(){vec3 p=aVel*uT + vec3(0.0,-6.0*uT*uT,0.0);",   // 扩散+轻微下沉
+      "vec4 mv=modelViewMatrix*vec4(p,1.0);",
+      "gl_PointSize=aScale*(220.0/-mv.z)*uPix*(1.0-uT*0.35);gl_Position=projectionMatrix*mv;}"].join("\n"),
+    fragmentShader:["uniform sampler2D uTex;uniform float uOpacity,uHue;",
+      "vec3 hsl(float h,float s,float l){vec3 r=clamp(abs(mod(h*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0,0.0,1.0);return l+s*(r-0.5)*(1.0-abs(2.0*l-1.0));}",
+      "void main(){vec4 t=texture2D(uTex,gl_PointCoord);if(t.a<0.02)discard;",
+      "gl_FragColor=vec4(hsl(uHue,0.8,0.6),1.0)*t.a*uOpacity;}"].join("\n"),
+    transparent:true,blending:THREE.AdditiveBlending,depthWrite:false
+  });
+  var pts=new THREE.Points(g,mat);pts.position.copy(pos);scene.add(pts);
+  puffs.push({pts:pts,mat:mat,life:0,maxLife:1.0+Math.random()*0.5});
+}
+function updatePuffs(dt){
+  for(var i=puffs.length-1;i>=0;i--){
+    var pf=puffs[i];pf.life+=dt;var f=pf.life/pf.maxLife;
+    pf.mat.uniforms.uT.value=pf.life*1.6;
+    pf.mat.uniforms.uOpacity.value=(1-f)*(1-f)*0.9;
+    if(f>=1){scene.remove(pf.pts);pf.pts.geometry.dispose();pf.mat.dispose();puffs.splice(i,1);}
+  }
+}
+
+
+// ==================== 动画 ====================
+function animate(){
+  requestAnimationFrame(animate);
+  var dt=Math.min(clock.getDelta(),0.05),t=clock.elapsedTime;
+  analyze();
+  hueBase=(hueBase+dt*0.025+overallS*dt*0.3)%1;
+
+  // 球壳（整体一起转动、各壳略微反向 → 有厚度的一个形体；接入流动能量与生命体联动）
+  for(var k=0;k<shells.length;k++){
+    var m=shells[k].userData.mat;
+    m.uniforms.uTime.value=t;m.uniforms.uBass.value=bassS;m.uniforms.uTreble.value=trebleS;m.uniforms.uHue.value=hueBase;
+    m.uniforms.uFlow.value=flowEnergy;m.uniforms.uBeat.value=beat;m.uniforms.uMid.value=midS;
+    shells[k].rotation.y+=dt*(0.03+midS*0.18+bassS*0.12)*(k%2?-0.6:1);   // 转速随音乐
+    shells[k].rotation.x=Math.sin(t*0.08+k)*0.05;
+  }
+  // 心脏（内部流动生命体）——流动相位由音乐能量累积推进
+  if(heart){
+    flowEnergy+=dt*(0.3+overallS*2.4+midS*1.0+beat*1.2);   // 有声翻涌快，安静缓流
+    var hu=heart.material.uniforms;
+    hu.uTime.value=t;hu.uFlow.value=flowEnergy;
+    hu.uBass.value=bassS;hu.uMid.value=midS;hu.uTreble.value=trebleS;
+    hu.uBeat.value=beat;hu.uHue.value=hueBase;
+    var s=1+bassS*0.4+beat*0.15;heart.scale.setScalar(s);
+    heart.rotation.y+=dt*(0.08+midS*0.25);heart.rotation.x+=dt*0.03;
+    heartWire.scale.setScalar(1+bassS*0.18+beat*0.06);heartWire.rotation.y-=dt*(0.05+midS*0.15);
+    heartWire.material.opacity=0.03+trebleS*0.10+beat*0.06;
+    heartWire.material.color.setHSL((hueBase+0.5)%1,0.6,0.5);
+    if(window._cl){window._cl.color.setHSL(hueBase,0.8,0.5);window._cl.intensity=0.7+bassS*2.2+beat*1.5;}
+  }
+  // 内部流动生命体（曲旋粒子）——流速与幅度完全由音乐驱动
+  if(flowCreature){
+    var fu=flowMat.uniforms;
+    fu.uTime.value=t;fu.uFlow.value=flowEnergy;
+    fu.uBass.value=bassS;fu.uMid.value=midS;fu.uTreble.value=trebleS;
+    fu.uBeat.value=beat;fu.uHue.value=hueBase;
+    flowCreature.rotation.y+=dt*(0.05+midS*0.3);
+    flowCreature.rotation.z=Math.sin(t*0.12)*0.06;
+  }
+  // 整个球体随低频轻微呼吸缩放 + 自动旋转（生命体自转，独立于相机）
+  if(orb){
+    orb.scale.setScalar(1+bassS*0.12+beat*0.05);
+    orb.rotation.y+=dt*(0.14+midS*0.35);
+    orb.rotation.x=Math.sin(t*0.06)*0.12;
+  }
+
+  // 环境：整个宇宙随音乐脉动
+  if(stars){
+    stars.rotation.y+=dt*(0.005+midS*0.02);
+    starMat.uniforms.uBoost.value=1.0+beat*1.6+trebleS*0.6+bassS*0.5;   // 节拍时星辰齐亮
+    stars.scale.setScalar(1+bassS*0.05+beat*0.03);                       // 星海随低频呼吸
+  }
+  for(var i=0;i<nebula.length;i++){var sp=nebula[i];
+    sp.material.opacity=0.08+overallS*0.18+beat*0.08;                    // 更明显的星云
+    sp.material.color.setHSL((sp.userData.hue+hueBase*0.4)%1,0.7,0.5);
+    sp.scale.x=sp.scale.y=sp.userData.baseScale?sp.userData.baseScale*(1+bassS*0.06):sp.scale.x;
+  }
+
+  updateShock(dt);
+
+  // 律动同步派发：强度=瞬时能量(决定大小/速度)，间隔随能量缩短，强拍即时触发→层次感
+  spawnCooldown-=dt;
+  var e=bassS*1.0+overallS*0.55+beat*0.9;                 // 律动强度
+  var beatHit=(beat>0.5 && spawnCooldown<-0.05);          // 强拍即时生成(留极小间隔防洪)
+  if(vizMode!==1 && ((spawnCooldown<=0 && e>0.34) || beatHit)){
+    var it=Math.min(1.5,0.32+e*0.95);                     // 越嗨生成的个体越大越快
+    if(vizMode===2)spawnWhale(it);
+    else if(vizMode===4)spawnJelly(it);
+    spawnCooldown=2.2-Math.min(1.95,e*1.7);               // 能量越高间隔越短(0.25~2.2s)
+  }
+  updateWhales(dt);
+  updateJellies(dt);
+  updateNotes(dt,t);
+  updatePuffs(dt);   // 2026-08: 补上粒子生命周期更新——此前缺失导致 puff 永不清理、背景累积光点
+
+  // 相机：宏大缓动 + 节拍推拉 + 轻滚
+  camPunch*=0.86;camRoll*=0.9;
+  var targetFov=58-bassS*8-camPunch*5;
+  camera.fov+=(targetFov-camera.fov)*0.12;camera.updateProjectionMatrix();
+  camera.up.set(Math.sin(camRoll),Math.cos(camRoll),0);
+  controls.autoRotateSpeed=0.32+midS*1.1;
+  controls.update();
+
+  if(bloom)bloom.strength=0.5+overallS*0.9+beat*0.4;   // 克制
+
+  composer.render();
+}
+
+// ==================== UI ====================
+function bindUI(){
+  document.getElementById('file').addEventListener('change',function(e){if(e.target.files[0])loadFile(e.target.files[0]);});
+  document.getElementById('micbtn').addEventListener('click',useMic);
+  document.getElementById('playpause').addEventListener('click',function(){if(!audioEl)return;if(audioEl.paused)audioEl.play();else audioEl.pause();updatePlayBtn();});
+  document.getElementById('another').addEventListener('click',function(){document.getElementById('file').click();});
+  document.getElementById('fullscreen').addEventListener('click',function(){
+    if(window.electronAPI && window.electronAPI.toggleFullscreen){window.electronAPI.toggleFullscreen();}
+  });
+  // 双击画布也可以切换全屏
+  renderer.domElement.addEventListener('dblclick',function(){
+    if(window.electronAPI && window.electronAPI.toggleFullscreen){window.electronAPI.toggleFullscreen();}
+  });
+  // ESC 退出全屏时更新按钮
+  document.addEventListener('fullscreenchange',function(){
+    var btn=document.getElementById('fullscreen');
+    btn.textContent=document.fullscreenElement?'⛶':'⛶';
+    if(document.fullscreenElement){
+      // 全屏后 5 秒不动鼠标自动隐藏光标
+      var hideTimer;
+      function showCursor(){document.body.style.cursor='';clearTimeout(hideTimer);hideTimer=setTimeout(function(){document.body.style.cursor='none';},5000);}
+      document.addEventListener('mousemove',showCursor);
+      hideTimer=setTimeout(function(){document.body.style.cursor='none';},5000);
+    }else{
+      document.body.style.cursor='';
+    }
+  });
+  var mbtns=document.querySelectorAll('#modes .mode');
+  for(var i=0;i<mbtns.length;i++){
+    mbtns[i].addEventListener('click',function(){
+      setMode(parseInt(this.getAttribute('data-m'),10));
+      var all=document.querySelectorAll('#modes .mode');
+      for(var j=0;j<all.length;j++)all[j].classList.remove('active');
+      this.classList.add('active');
+    });
+  }
+}
+function clearAllSpawns(){
+  for(var i=whales.length-1;i>=0;i--){scene.remove(whales[i].mesh);whales[i].mesh.geometry.dispose();whales[i].mat.dispose();}
+  whales.length=0;
+  for(var i=notes.length-1;i>=0;i--){scene.remove(notes[i].sp);notes[i].mat.dispose();}
+  notes.length=0;
+  for(var i=jellies.length-1;i>=0;i--){scene.remove(jellies[i].mesh);jellies[i].mesh.geometry.dispose();jellies[i].mat.dispose();}
+  jellies.length=0;
+  for(var i=puffs.length-1;i>=0;i--){scene.remove(puffs[i].pts);puffs[i].pts.geometry.dispose();puffs[i].mat.dispose();}
+  puffs.length=0;
+}
+function setMode(m){vizMode=m;spawnCooldown=0;clearAllSpawns();
+  document.querySelectorAll('.mode').forEach(function(el){el.classList.toggle('active',parseInt(el.getAttribute('data-m'),10)===m);});
+}
+
+// 接收悬浮球右键菜单发来的样式切换
+if (window.electronAPI && window.electronAPI.onVizMode) {
+  window.electronAPI.onVizMode(function(m){ setMode(m); });
+}
+
+// 接收屏保自动触发：直接使用麦克风开始拾音
+if (window.electronAPI && window.electronAPI.onAutoMic) {
+  window.electronAPI.onAutoMic(function(){
+    useMic();
+  });
+}
+function setCoverOff(){document.getElementById('cover').classList.add('off');document.getElementById('ctl').classList.add('show');document.getElementById('modes').classList.add('show');}
+function updatePlayBtn(){document.getElementById('playpause').textContent=(audioEl&&!audioEl.paused)?'⏸':'▶';}
+function showTrack(name){var el=document.getElementById('track');el.textContent='♪ '+name;el.style.opacity='1';clearTimeout(window._tt);window._tt=setTimeout(function(){el.style.opacity='0';},4500);}
+function onResize(){W=window.innerWidth;H=window.innerHeight;camera.aspect=W/H;camera.updateProjectionMatrix();renderer.setSize(W,H);composer.setSize(W,H);if(bloom)bloom.setSize(W,H);}
+</script>
+</body>
+</html>

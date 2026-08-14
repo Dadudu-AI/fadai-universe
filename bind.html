@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>绑定音乐播放器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #0b1020;
+    color: #cdd9f2;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+  .head {
+    padding: 18px 22px 12px;
+    background: linear-gradient(180deg, rgba(30,45,90,.45), transparent);
+  }
+  .head h1 { font-size: 17px; font-weight: 600; letter-spacing: 2px; color: #e8f0ff; }
+  .head h1 .note { margin-right: 8px; }
+  .head p { font-size: 12px; color: #8fa3c8; margin-top: 7px; line-height: 1.7; }
+  .bound-info {
+    font-size: 12px; color: #7cc4ff; padding: 8px 22px 0;
+    min-height: 20px;
+  }
+  .search-row { padding: 10px 22px 8px; }
+  .search-row input {
+    width: 100%; padding: 8px 12px; border-radius: 8px;
+    border: 1px solid rgba(100,150,255,.25);
+    background: rgba(20,30,60,.6); color: #e8f0ff; font-size: 13px;
+    outline: none;
+  }
+  .search-row input::placeholder { color: #5a6f9c; }
+  .search-row input:focus { border-color: rgba(124,196,255,.6); }
+  #list {
+    flex: 1; overflow-y: auto;
+    padding: 4px 16px 12px;
+  }
+  #list::-webkit-scrollbar { width: 6px; }
+  #list::-webkit-scrollbar-thumb { background: rgba(100,150,255,.3); border-radius: 3px; }
+  .app-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 12px; margin-bottom: 5px;
+    border-radius: 10px;
+    border: 1px solid rgba(100,150,255,.12);
+    background: rgba(16,25,50,.55);
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .app-item:hover { background: rgba(40,60,110,.5); }
+  .app-item.sel {
+    border-color: rgba(124,196,255,.55);
+    background: rgba(45,70,130,.45);
+  }
+  .app-item .ic {
+    width: 34px; height: 34px; border-radius: 8px; flex: none;
+    background: rgba(255,255,255,.06);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; overflow: hidden;
+  }
+  .app-item .ic img { width: 100%; height: 100%; object-fit: contain; }
+  .app-item .meta { flex: 1; min-width: 0; }
+  .app-item .nm { font-size: 13.5px; color: #e8f0ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .app-item .nm .music-tag { font-size: 10px; color: #ffd77a; margin-right: 6px; }
+  .app-item .pn { font-size: 11px; color: #6b7fb0; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .app-item .chk {
+    width: 20px; height: 20px; border-radius: 50%; flex: none;
+    border: 1.5px solid rgba(100,150,255,.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #0b1020;
+  }
+  .app-item.sel .chk { background: #7cc4ff; border-color: #7cc4ff; }
+  .app-item.sel .chk::after { content: '✓'; font-weight: 700; }
+  .empty { text-align: center; color: #5a6f9c; font-size: 13px; padding: 30px 0; }
+  .foot {
+    padding: 14px 22px 18px;
+    display: flex; gap: 10px; justify-content: flex-end;
+    background: linear-gradient(0deg, rgba(8,12,24,.9), transparent);
+  }
+  button {
+    padding: 9px 20px; border-radius: 9px; border: none;
+    font-size: 13.5px; cursor: pointer; letter-spacing: 1px;
+  }
+  #save { background: linear-gradient(135deg, #5a9bff, #7cc4ff); color: #081020; font-weight: 600; }
+  #save:hover { filter: brightness(1.1); }
+  #skip { background: transparent; color: #8fa3c8; border: 1px solid rgba(100,150,255,.25); }
+  #skip:hover { background: rgba(100,150,255,.1); }
+  .loading { text-align: center; color: #6b7fb0; font-size: 13px; padding: 40px 0; }
+  .loading::after { content: '…'; animation: dots 1.2s infinite; }
+  @keyframes dots { 0% { content: ''; } 33% { content: '.'; } 66% { content: '..'; } 100% { content: '...'; } }
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1><span class="note">🎵</span>绑定音乐播放器</h1>
+    <p>选择你常用的音乐播放器。绑定后，<b style="color:#7cc4ff">打开它时悬浮球会自动出现</b>，播放音乐且电脑空闲时自动全屏律动。可多选，随时可在悬浮球右键菜单里修改。</p>
+  </div>
+  <div id="boundInfo" class="bound-info"></div>
+  <div class="search-row"><input id="search" placeholder="搜索应用…" autocomplete="off"></div>
+  <div id="list"><div class="loading">正在扫描运行中的应用</div></div>
+  <div class="foot">
+    <button id="skip">暂不绑定</button>
+    <button id="save">保存绑定</button>
+  </div>
+
+<script>
+  // 已知音乐播放器（bundleId → 展示名），用于置顶标注
+  const KNOWN_MUSIC = {
+    'com.netease.cloudmusic': '网易云音乐',
+    'com.netease.163music': '网易云音乐',
+    'com.apple.Music': 'Apple Music',
+    'com.spotify.client': 'Spotify',
+    'com.tencent.QQMusic': 'QQ音乐',
+    'com.kugou.music': '酷狗音乐',
+    'com.kuwo.kuwoMusic': '酷我音乐',
+    'com.migu.music': '咪咕音乐',
+    'com.tidal.desktop': 'TIDAL',
+    'com.apple.music': 'Apple Music',
+    'com.netease.music': '网易云音乐',
+  };
+  // 进程名兜底（bundleId 缺失时）
+  const KNOWN_PROC = ['netease', 'cloudmusic', '163music', 'qqmusic', 'spotify', 'kuwo', 'kugou', 'yunmusic', 'music'];
+
+  const listEl = document.getElementById('list');
+  const searchEl = document.getElementById('search');
+  const boundInfoEl = document.getElementById('boundInfo');
+
+  let apps = [];        // 全部应用 [{name, processName, bundleId, icon}]
+  let bound = [];       // 已绑定进程名（小写）
+  let selected = new Set();
+
+  function isMusicApp(a) {
+    const bid = (a.bundleId || '').toLowerCase();
+    const pn = (a.processName || '').toLowerCase();
+    const nm = (a.name || '').toLowerCase();
+    if (KNOWN_MUSIC[bid]) return true;
+    if (KNOWN_MUSIC[a.bundleId]) return true;
+    return KNOWN_PROC.some(k => pn.includes(k) || nm.includes(k));
+  }
+
+  function musicLabel(a) {
+    const bid = a.bundleId || '';
+    if (KNOWN_MUSIC[bid]) return KNOWN_MUSIC[bid];
+    return '音乐播放器';
+  }
+
+  function render() {
+    const q = searchEl.value.trim().toLowerCase();
+    let list = apps.filter(a => !q || (a.name || '').toLowerCase().includes(q) || (a.processName || '').toLowerCase().includes(q));
+    // 已知播放器优先
+    list.sort((a, b) => (isMusicApp(b) ? 1 : 0) - (isMusicApp(a) ? 1 : 0));
+    if (list.length === 0) {
+      listEl.innerHTML = '<div class="empty">没有找到匹配的应用<br>请先打开你的音乐播放器，再点这里刷新</div>';
+      return;
+    }
+    listEl.innerHTML = '';
+    list.forEach(a => {
+      const div = document.createElement('div');
+      div.className = 'app-item' + (selected.has(a.processName.toLowerCase()) ? ' sel' : '');
+      const ic = a.icon ? '<img src="data:image/png;base64,' + a.icon + '">' : '🎵';
+      const tag = isMusicApp(a) ? '<span class="music-tag">' + musicLabel(a) + '</span>' : '';
+      div.innerHTML =
+        '<div class="ic">' + ic + '</div>' +
+        '<div class="meta"><div class="nm">' + tag + escapeHtml(a.name || a.processName || '未知') + '</div>' +
+        '<div class="pn">' + escapeHtml(a.processName || '') + '</div></div>' +
+        '<div class="chk"></div>';
+      div.addEventListener('click', () => {
+        const pn = a.processName.toLowerCase();
+        if (selected.has(pn)) selected.delete(pn); else selected.add(pn);
+        div.classList.toggle('sel', selected.has(pn));
+        updateBoundInfo();
+      });
+      listEl.appendChild(div);
+    });
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function updateBoundInfo() {
+    if (selected.size === 0) {
+      boundInfoEl.textContent = '尚未绑定 — 打开播放器时悬浮球不会出现';
+    } else {
+      const names = apps.filter(a => selected.has(a.processName.toLowerCase())).map(a => a.name);
+      boundInfoEl.textContent = '已绑定：' + names.join('、');
+    }
+  }
+
+  function load() {
+    listEl.innerHTML = '<div class="loading">正在扫描运行中的应用</div>';
+    Promise.all([window.bindAPI.listApps(), window.bindAPI.getBoundApps()])
+      .then(([appList, boundApps]) => {
+        apps = appList || [];
+        bound = (boundApps || []).map(s => s.toLowerCase());
+        bound.forEach(b => {
+          // 仅当该应用当前正在运行时默认勾选（否则无法确认名字对应）
+          if (apps.some(a => a.processName.toLowerCase() === b)) selected.add(b);
+        });
+        render();
+        updateBoundInfo();
+      })
+      .catch(() => {
+        listEl.innerHTML = '<div class="empty">扫描失败，请重试</div>';
+      });
+  }
+
+  searchEl.addEventListener('input', render);
+
+  document.getElementById('save').addEventListener('click', () => {
+    window.bindAPI.setBoundApps([...selected]);
+  });
+
+  document.getElementById('skip').addEventListener('click', () => {
+    window.close();
+  });
+
+  load();
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "name": "sound-orb",
+  "version": "1.0.0",
+  "description": "发呆音宇宙 - 音乐律动可视化",
+  "main": "main.js",
+  "author": "孟光",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --mac --arm64"
+  },
+  "build": {
+    "appId": "com.mgmeta.soundorb",
+    "productName": "发呆音宇宙",
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "ball.html",
+      "bind.html",
+      "lib/**/*",
+      "bin/**/*"
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.music",
+      "identity": null,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "发呆音宇宙需要访问麦克风来采集音乐声音，以驱动实时可视化效果。"
+      }
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "发呆音宇宙",
+      "language": "2052"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  }
+}

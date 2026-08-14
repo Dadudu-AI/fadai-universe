@@ -1,0 +1,11 @@
+# 依赖与构建产物(不提交)
+node_modules/
+dist/
+build/
+
+# macOS
+.DS_Store
+*.log
+
+# 临时文件
+*.tmp
