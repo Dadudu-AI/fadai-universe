@@ -18,8 +18,8 @@
 
 | 平台 | 文件 | 说明 |
 |------|------|------|
-| macOS (Apple Silicon) | `发呆音宇宙-x.x.x-arm64.dmg` | 双击安装，拖入应用程序 |
-| Windows 10/11 x64 | `发呆音宇宙-Setup-x.x.x.exe` | 双击安装，按向导操作 |
+| macOS (Apple Silicon) | `fadai-universe-x.x.x-arm64.dmg` | 双击安装，拖入应用程序 |
+| Windows 10/11 x64 | `fadai-universe-Setup-x.x.x.exe` | 双击安装，按向导操作 |
 
 > 未签名应用首次打开可能提示"无法验证开发者"（macOS 右键→打开；Windows 点"更多信息→仍要运行"），属正常现象。
 
