@@ -125,7 +125,7 @@ func listApps() -> [[String: Any]] {
         guard app.activationPolicy == .regular else { continue }
         let name = app.localizedName ?? ""
         let proc = app.executableURL?.lastPathComponent ?? ""
-        if name.lowercased().contains("声之球体") || proc.lowercased().contains("electron") { continue }
+        if name.lowercased().contains("fadai universe") || proc.lowercased().contains("electron") { continue }
         var item: [String: Any] = [
             "name": name,
             "processName": proc,

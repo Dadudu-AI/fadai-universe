@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <style>
   html,body{margin:0;padding:0;overflow:hidden;background:transparent;-webkit-user-select:none;user-select:none;width:100%;height:100%;}
-  /* 球体皮肤容器：窗口 320x360，球放在右下角但留出呼吸光晕空间（不被窗口边缘裁切） */
+  /* Orb skin container: window 320x360, orb sits bottom-right with breathing-glow clearance (not clipped by window edge) */
   #ball{
     width:56px;height:56px;border-radius:50%;cursor:pointer;
     position:fixed;right:44px;bottom:44px;z-index:10;
@@ -19,17 +19,17 @@
   #ball svg{width:30px;height:30px;fill:#dcebff;filter:drop-shadow(0 0 8px rgba(120,180,255,.9));pointer-events:none;}
   @keyframes breathe{0%,100%{box-shadow:0 0 18px rgba(80,130,255,.45), inset 0 0 10px rgba(160,200,255,.3);}50%{box-shadow:0 0 34px rgba(100,160,255,.75), inset 0 0 16px rgba(190,220,255,.5);}}
 
-  /* 皮肤：鲸鱼（圆形 + 尾鳍） */
+  /* Skin: whale (circle + tail fin) */
   #ball.skin-whale{border-radius:50% 50% 50% 50%;background:radial-gradient(circle at 32% 28%, rgba(90,180,255,.6), rgba(20,60,140,.9) 62%, rgba(8,20,70,.98));}
   #ball.skin-whale svg.ico-ball{display:none;}
   #ball.skin-whale svg.ico-whale{display:block;}
 
-  /* 皮肤：水母（半圆伞 + 触手） */
+  /* Skin: jellyfish (half-dome bell + tentacles) */
   #ball.skin-jelly{border-radius:50% 50% 50% 50%;background:radial-gradient(circle at 50% 30%, rgba(220,140,255,.55), rgba(120,40,180,.85) 60%, rgba(50,10,90,.98));}
   #ball.skin-jelly svg.ico-ball{display:none;}
   #ball.skin-jelly svg.ico-jelly{display:block;}
 
-  /* 默认球体皮肤只显示音符 */
+  /* Default orb skin shows only the note icon */
   #ball svg.ico-whale,#ball svg.ico-jelly{display:none;}
 
   #tip{
@@ -40,12 +40,12 @@
     opacity:0;transform:translateX(6px);transition:.25s;pointer-events:none;
     backdrop-filter:blur(8px);box-shadow:0 4px 18px rgba(0,0,0,.45);
   }
-  /* tip 样式跟随皮肤：球体=蓝、鲸鱼=深蓝、水母=紫 */
+  /* tip color follows skin: orb=blue, whale=deep blue, jelly=purple */
   #ball:hover + #tip{opacity:1;transform:translateX(0);}
   #ball.skin-whale + #tip{color:#b8dcff;background:rgba(10,26,64,.88);border-color:rgba(90,180,255,.45);box-shadow:0 4px 18px rgba(20,80,180,.5);}
   #ball.skin-jelly + #tip{color:#f0d6ff;background:rgba(40,14,70,.9);border-color:rgba(200,130,255,.5);box-shadow:0 4px 18px rgba(150,50,220,.5);}
 
-  /* 右键菜单：窗口放大后有足够空间 */
+  /* Right-click menu: enlarged window leaves enough room */
   #menu{
     position:fixed;display:none;min-width:150px;z-index:99;
     background:rgba(14,22,52,.95);border:1px solid rgba(100,150,255,.35);
@@ -70,17 +70,17 @@
   <svg class="ico-whale" viewBox="0 0 24 24"><path d="M2 13c1.5-3.5 5-6 9.5-6 3.5 0 6.5 1.5 8.5 4l2-1-.5 3c1 1 1.5 2.5 1.5 4 0 1-.5 1.5-1.5 1.5-1.7 0-3.3-1-4.5-2.5h-2.5c-.5 1.5-2 2.5-3.5 2.5S7.5 17.5 7 16c-2 0-3.5-.8-4.5-2-.4.6-1 1-1.5 1 .2-1 .8-1.8 1-2zM8 11.5c-1 0-2 .3-2.8.9C6.4 13 7.4 13.5 8.5 13.5c1.6 0 3-.5 4-1.3-.9-.5-2.3-.7-4.5-.7z"/></svg>
   <svg class="ico-jelly" viewBox="0 0 24 24"><path d="M4 11c0-4.4 3.6-8 8-8s8 3.6 8 8c0 1.5-.4 2.9-1 4H5c-.6-1.1-1-2.5-1-4zm3 5h10l-1 4.5c-.2.9-1 1.5-1.9 1.5h-4.2c-.9 0-1.7-.6-1.9-1.5L7 16zm3 1.5v2c0 .6.4 1 1 1s1-.4 1-1v-2h-2zm3 0v2.5c0 .6.4 1 1 1s1-.4 1-1v-2.5h-2z"/></svg>
 </div>
-<div id="tip">发呆音宇宙</div>
+<div id="tip">Fadai Universe</div>
 <div id="menu">
-  <div class="mi" data-action="open">打开可视化<span class="k">左键</span></div>
-  <div class="mi" data-action="bind">绑定播放器…<span class="k">⚙</span></div>
+  <div class="mi" data-action="open">Open Visualizer<span class="k">Left-click</span></div>
+  <div class="mi" data-action="bind">Bind Player…<span class="k">⚙</span></div>
   <div class="sep"></div>
-  <div class="sub">悬浮球皮肤</div>
-  <div class="mi cur" data-skin="orb">球体</div>
-  <div class="mi" data-skin="whale">鲸鱼</div>
-  <div class="mi" data-skin="jelly">水母</div>
+  <div class="sub">Orb Skin</div>
+  <div class="mi cur" data-skin="orb">Orb</div>
+  <div class="mi" data-skin="whale">Whale</div>
+  <div class="mi" data-skin="jelly">Jellyfish</div>
   <div class="sep"></div>
-  <div class="mi danger" data-action="quit">退出<span class="k">⌘Q</span></div>
+  <div class="mi danger" data-action="quit">Quit<span class="k">⌘Q</span></div>
 </div>
 <script>
   const ball = document.getElementById('ball');
@@ -101,7 +101,7 @@
 
   function closeMenu() {
     menu.classList.remove('show');
-    // 菜单关闭后重新评估交互区（鼠标若已离开球则恢复穿透）
+    // Re-evaluate the interactive zone after the menu closes (restore click-through if the mouse left the orb)
     if (window.electronAPI && window.electronAPI.ballInteractive) {
       window.electronAPI.ballInteractive(inInteractiveZone(lastKnownX, lastKnownY));
     }
@@ -109,9 +109,9 @@
 
   let lastKnownX = 0, lastKnownY = 0;
 
-  // ── 拖拽（左键按住移动窗口；不拖动松开 = 打开可视化）──
+  // -- drag (hold left button to move the window; release without dragging = open visualizer) --
   ball.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return; // 只响应左键
+    if (e.button !== 0) return; // left button only
     dragging = true;
     moved = false;
     startX = e.screenX;
@@ -143,10 +143,10 @@
     moved = false;
   });
 
-  // 窗口失焦时重置拖拽状态
+  // Reset drag state when the window loses focus
   window.addEventListener('blur', () => { dragging = false; moved = false; closeMenu(); });
 
-  // ── 右键菜单 ──
+  // -- right-click menu --
   menu.addEventListener('click', (e) => {
     const mi = e.target.closest('.mi');
     if (!mi) return;
@@ -168,20 +168,20 @@
     closeMenu();
   });
 
-  // 点击菜单外关闭
+  // Click outside the menu closes it
   window.addEventListener('click', (e) => {
     if (!menu.contains(e.target) && e.target !== ball) closeMenu();
   });
 
-  // 主进程启动时下发记忆的皮肤
+  // Main process sends the remembered skin on startup
   if (window.electronAPI && window.electronAPI.onBallSkin) {
     window.electronAPI.onBallSkin(function(skin){ applySkin(skin); });
   }
 
-  // ── 鼠标穿透控制：鼠标在球/菜单上时窗口交互，否则穿透到下层应用 ──
+  // -- click-through control: interactive over orb/menu, click-through elsewhere --
   function inInteractiveZone(x, y) {
     const br = ball.getBoundingClientRect();
-    const pad = 8; // 球周围一点缓冲，避免边缘误穿透
+    const pad = 8; // small buffer around the orb to avoid accidental click-through at the edge
     if (x >= br.left - pad && x <= br.right + pad && y >= br.top - pad && y <= br.bottom + pad) return true;
     if (menu.classList.contains('show')) {
       const mr = menu.getBoundingClientRect();
@@ -201,14 +201,14 @@
     }
   }
 
-  // forward 模式下即使穿透也能收到 mousemove
+  // forward mode still receives mousemove while click-through
   window.addEventListener('mousemove', (e) => {
     lastKnownX = e.clientX;
     lastKnownY = e.clientY;
     updateInteractive(e.clientX, e.clientY);
   });
 
-  // 菜单打开时确保交互
+  // Ensure interactivity while the menu is open
   ball.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     menu.classList.add('show');

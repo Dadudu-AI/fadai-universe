@@ -1,16 +1,16 @@
 {
-  "name": "sound-orb",
+  "name": "fadai-universe",
   "version": "1.0.0",
-  "description": "发呆音宇宙 - 音乐律动可视化",
+  "description": "Fadai Universe - music-reactive screen visualizer",
   "main": "main.js",
-  "author": "孟光",
+  "author": "Meng Guang",
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --mac --arm64"
   },
   "build": {
     "appId": "com.mgmeta.soundorb",
-    "productName": "发呆音宇宙",
+    "productName": "Fadai Universe",
     "asar": false,
     "directories": {
       "output": "dist"
@@ -31,7 +31,7 @@
       "category": "public.app-category.music",
       "identity": null,
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "发呆音宇宙需要访问麦克风来采集音乐声音，以驱动实时可视化效果。"
+        "NSMicrophoneUsageDescription": "Fadai Universe needs microphone access to capture music and drive real-time visualization."
       }
     },
     "win": {
@@ -44,8 +44,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "发呆音宇宙",
-      "language": "2052"
+      "shortcutName": "Fadai Universe",
+      "language": "1033"
     }
   },
   "devDependencies": {

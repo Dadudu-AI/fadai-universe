@@ -1,4 +1,4 @@
-# 依赖与构建产物(不提交)
+# Dependencies & build output (not committed)
 node_modules/
 dist/
 build/
@@ -7,5 +7,5 @@ build/
 .DS_Store
 *.log
 
-# 临时文件
+# Temp files
 *.tmp

@@ -3,11 +3,11 @@ const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-let win;          // 可视化全屏窗口
-let ballWin;      // 悬浮球窗口
-let bindWin;      // 绑定播放器设置窗口
-let detectTimer;  // 前台应用检测定时器
-let ballPos = null; // 悬浮球记忆位置 {x, y}
+let win;          // visualization fullscreen window
+let ballWin;      // floating orb window
+let bindWin;      // bind-player settings window
+let detectTimer;  // foreground-app detection timer
+let ballPos = null; // remembered orb position {x, y}
 
 const BALL_STATE_FILE = () => path.join(app.getPath('userData'), 'ball-pos.json');
 
@@ -15,7 +15,7 @@ function loadBallPos() {
   try {
     const d = JSON.parse(fs.readFileSync(BALL_STATE_FILE(), 'utf-8'));
     if (typeof d.x === 'number' && typeof d.y === 'number') return d;
-  } catch (e) { /* 首次运行无文件 */ }
+  } catch (e) { /* no state file on first run */ }
   return null;
 }
 
@@ -43,13 +43,13 @@ function saveBallSkin(skin) {
   } catch (e) {}
 }
 
-// ── 绑定播放器配置（存进程名小写列表，如 ["neteasemusic","spotify"]）──
+// -- bound-player config (stores lowercase process names, e.g. ["neteasemusic","spotify"]) --
 function loadBoundApps() {
   try {
     const d = JSON.parse(fs.readFileSync(BALL_STATE_FILE(), 'utf-8'));
     if (Array.isArray(d.boundApps) && d.boundApps.length > 0) return d.boundApps;
   } catch (e) {}
-  return null; // null = 从未绑定过；默认检测网易云
+  return null; // null = never bound; default detection targets NetEase
 }
 
 function saveBoundApps(apps) {
@@ -60,10 +60,10 @@ function saveBoundApps(apps) {
   } catch (e) {}
 }
 
-// ── 首次运行引导标志：独立于绑定配置 ──
-// 绑定引导是否已展示过（无论用户保存、暂不绑定还是直接关窗）。
-// 用独立标志而非 boundApps 判断：重装/重新下载后 userData 残留的绑定配置
-// 不应阻止首次引导再次弹出。
+// -- first-run guide flag: independent from the binding config --
+// Whether the bind guide has been shown (regardless of save/skip/close).
+// Uses a dedicated flag instead of boundApps: after a reinstall/re-download,
+// leftover binding config in userData must NOT suppress the first-run guide.
 function loadFirstRunDone() {
   try {
     const d = JSON.parse(fs.readFileSync(BALL_STATE_FILE(), 'utf-8'));
@@ -87,7 +87,7 @@ function createWindow() {
     height: 800,
     fullscreen: true,
     backgroundColor: '#010109',
-    title: '发呆音宇宙',
+    title: 'Fadai Universe',
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -98,14 +98,14 @@ function createWindow() {
 
   win.loadFile('index.html');
 
-  // 自动授权麦克风（桌面 App 无需再弹网页授权框；系统级授权由 Info.plist 处理）
+  // Auto-allow microphone (no in-page prompt needed; OS-level permission is handled by Info.plist)
   session.defaultSession.setPermissionRequestHandler((wc, permission, callback) => {
     if (permission === 'media' || permission === 'audioCapture') callback(true);
     else callback(false);
   });
   session.defaultSession.setPermissionCheckHandler(() => true);
 
-  // 快捷键：F / F11 切换全屏，Esc 退出全屏
+  // Shortcuts: F / F11 toggle fullscreen, Esc exits fullscreen
   win.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return;
     const k = (input.key || '').toLowerCase();
@@ -153,22 +153,22 @@ function createBall() {
   ballWin.loadFile('ball.html');
   ballWin.setAlwaysOnTop(true, 'screen-saver');
   ballWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  // 空白区域鼠标穿透：只有球/菜单所在位置接收鼠标，其余穿透到下层窗口
+  // Click-through on empty areas: only the orb/menu receive the mouse, the rest passes to the window below
   ballWin.setIgnoreMouseEvents(true, { forward: true });
-  ballWin.hide(); // 初始隐藏，检测到音乐 App 才显示
+  ballWin.hide(); // hidden initially; shown when a bound music app is detected
 
-  // 把记忆的皮肤传给渲染进程
+  // Send the remembered skin to the renderer
   ballWin.webContents.on('did-finish-load', () => {
     const skin = loadBallSkin();
     ballWin.webContents.send('ball-skin', skin);
   });
 
-  // 不抢占键盘焦点，避免影响正在播放的音乐
+  // Don't steal keyboard focus, so music playback isn't interrupted
   ballWin.on('show', () => ballWin.blur());
   return ballWin;
 }
 
-// 绑定播放器设置窗口（列出正在运行的应用，让用户选择监听谁）
+// Bind-player settings window (lists running apps so the user picks what to watch)
 function createBindWindow() {
   if (bindWin && !bindWin.isDestroyed()) {
     bindWin.show();
@@ -178,7 +178,7 @@ function createBindWindow() {
   bindWin = new BrowserWindow({
     width: 540,
     height: 600,
-    title: '绑定音乐播放器',
+    title: 'Bind Music Player',
     backgroundColor: '#0b1020',
     resizable: false,
     maximizable: false,
@@ -193,14 +193,14 @@ function createBindWindow() {
   bindWin.loadFile('bind.html');
   bindWin.on('closed', () => {
     bindWin = null;
-    // 无论保存绑定、暂不绑定还是直接关窗，都标记首次引导已完成，避免下次启动重复弹窗
+    // Whether saved, skipped, or closed, mark the first-run guide as done to avoid re-prompting
     saveFirstRunDone();
   });
   return bindWin;
 }
 
-// 查询绑定播放器状态：进程是否打开、是否在播放、系统空闲时长、音频是否活动
-let stateInFlight = false; // 防并发：Windows 检测走 PowerShell 较慢，避免 3s 定时器堆叠
+// Query bound-player state: is the process open, is it playing, system idle time, is audio active
+let stateInFlight = false; // anti-concurrency: Windows detection via PowerShell is slow, avoid stacking the 3s timer
 
 function queryMusicState(cb) {
   if (stateInFlight) return;
@@ -208,8 +208,8 @@ function queryMusicState(cb) {
   const isWin = process.platform === 'win32';
   const bin = path.join(__dirname, 'bin', isWin ? 'musicstate.js' : 'musicstate');
   const cfg = BALL_STATE_FILE();
-  // Windows: 用 Electron 自带 Node 运行 JS 检测脚本（ELECTRON_RUN_AS_NODE）
-  // macOS: 直接运行编译好的 Swift 二进制
+  // Windows: run the JS detection script with Electron's bundled Node (ELECTRON_RUN_AS_NODE)
+  // macOS: run the compiled Swift binary directly
   const proc = isWin
     ? spawn(process.execPath, [bin, '--config', cfg], { timeout: 8000, env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' } })
     : spawn(bin, ['--config', cfg], { timeout: 5000 });
@@ -226,7 +226,7 @@ function queryMusicState(cb) {
   });
 }
 
-// 列出正在运行的 GUI 应用（绑定播放器窗口用）
+// List running GUI apps (used by the bind-player window)
 function listRunningApps(cb) {
   const isWin = process.platform === 'win32';
   const bin = path.join(__dirname, 'bin', isWin ? 'musicstate.js' : 'musicstate');
@@ -245,24 +245,24 @@ function listRunningApps(cb) {
   });
 }
 
-let screensaverArmed = false; // 屏保是否已触发（避免重复打开）
+let screensaverArmed = false; // whether the screensaver has been triggered (avoid re-opening)
 
-// 检测循环（每 3 秒）：
-// 1. 网易云打开 → 显示悬浮球（无论前后台）；关闭 → 隐藏
-// 2. 播放中 + 空闲≥60s → 自动打开全屏可视化作为屏保
+// Detection loop (every 3s):
+// 1. Bound player open -> show the orb (foreground or background); closed -> hide
+// 2. Playing + idle >= 60s -> auto-open fullscreen visualization as a screensaver
 function startDetection() {
   detectTimer = setInterval(() => {
     if (!ballWin || ballWin.isDestroyed()) return;
     queryMusicState((state) => {
       if (!state) return;
-      // 悬浮球：绑定的播放器进程存在即显示
+      // Orb: show whenever a bound player process exists
       if (state.appOpen) {
         if (!ballWin.isVisible()) ballWin.showInactive();
       } else {
         if (ballWin.isVisible()) ballWin.hide();
       }
-      // 屏保：播放中 + 空闲≥60s → 自动全屏。
-      // 窗口不存在 → 新建并全屏；窗口已打开但未全屏（用户 ESC/⛶ 退出过）→ 直接切入全屏
+      // Screensaver: playing + idle >= 60s -> auto-fullscreen.
+      // No window -> create and fullscreen; window open but not fullscreen (user pressed Esc/⛶) -> switch in
       if (state.playing && state.idleLong && state.audioRunning) {
         const winAlive = !!(win && !win.isDestroyed());
         if (!screensaverArmed && (!winAlive || !win.isFullScreen())) {
@@ -271,19 +271,19 @@ function startDetection() {
             createWindow();
             if (win && !win.isDestroyed()) {
               win.setFullScreen(true);
-              // 页面加载完成后自动点击"使用麦克风"，直接进入拾音律动
+              // After the page loads, auto-click "Use Microphone" and go straight into mic-driven mode
               win.webContents.once('did-finish-load', () => {
                 win.webContents.send('auto-mic');
               });
             }
           } else {
-            // 窗口已存在但非全屏：切入全屏（页面早已加载，不重复触发 auto-mic）
+            // Window exists but not fullscreen: switch in (page already loaded, don't re-trigger auto-mic)
             win.setFullScreen(true);
           }
         }
       } else {
-        // 仅复位触发标记。用户晃动鼠标/暂停播放等都不再自动关闭或退出全屏——
-        // 退出全屏的唯一途径：点击缩放按钮(⛶)或按 ESC（见 before-input-event 处理）
+        // Only reset the trigger flag. Mouse movement / pausing playback etc. do NOT auto-close or exit fullscreen —
+        // the only ways out: click the ⛶ button or press ESC (see before-input-event handler)
         screensaverArmed = false;
       }
     });
@@ -298,7 +298,7 @@ ipcMain.on('open-visualizer', () => {
   createWindow();
 });
 
-// ── 绑定播放器 ──
+// -- bind player --
 ipcMain.on('open-bind-dialog', () => {
   createBindWindow();
 });
@@ -343,7 +343,7 @@ ipcMain.on('set-ball-skin', (e, skin) => {
 
 ipcMain.on('ball-interactive', (e, interactive) => {
   if (ballWin && !ballWin.isDestroyed()) {
-    // interactive=true 时窗口接收鼠标（球/菜单上）；false 时穿透
+    // interactive=true: window receives the mouse (over orb/menu); false: click-through
     ballWin.setIgnoreMouseEvents(!interactive, { forward: true });
   }
 });
@@ -351,7 +351,7 @@ ipcMain.on('ball-interactive', (e, interactive) => {
 app.whenReady().then(() => {
   createBall();
   startDetection();
-  // 首次运行：引导绑定音乐播放器（未展示过引导时延迟弹出，避免与悬浮球同时出现）
+  // First run: guide the user to bind a music player (delayed so it doesn't clash with the orb appearing)
   if (!loadFirstRunDone()) {
     setTimeout(() => createBindWindow(), 1500);
   }
@@ -361,6 +361,6 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  // 悬浮球窗口关闭不退出（保留托盘行为），仅当所有窗口都关掉时仍驻留
+  // The orb window closing doesn't quit (keeps tray-like behavior); stays resident even with all windows closed
   if (process.platform !== 'darwin') app.quit();
 });

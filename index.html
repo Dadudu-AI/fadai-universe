@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>发呆音宇宙 · 音乐律动可视化</title>
+<title>Fadai Universe · Music-Reactive Visualization</title>
 <style>
   html,body{margin:0;padding:0;overflow:hidden;background:#010109;font-family:-apple-system,"PingFang SC",sans-serif;color:#c7d8f5;}
   canvas{display:block;}
@@ -44,26 +44,26 @@
 </head>
 <body>
 <div id="cover">
-  <h1>发呆音宇宙</h1>
-  <p>SOUND · ORB — 随音乐在三维空间处处律动的声音生命体</p>
-  <p style="font-size:12px;color:#556aa0;">上传一首歌，或使用麦克风采集现场声音</p>
+  <h1>Fadai Universe</h1>
+  <p>SOUND · ORB — a living sound creature dancing through 3D space with your music</p>
+  <p style="font-size:12px;color:#556aa0;">Upload a song, or use your microphone to capture live sound</p>
   <div class="btnrow">
-    <label class="btn" for="file">▸ 选择音乐文件</label>
-    <div class="btn" id="micbtn">◉ 使用麦克风</div>
+    <label class="btn" for="file">▸ Choose Music File</label>
+    <div class="btn" id="micbtn">◉ Use Microphone</div>
   </div>
   <input type="file" id="file" accept="audio/*">
 </div>
 
 <div id="track"></div>
 <div id="modes">
-  <div class="mode" data-m="1">元神</div>
-  <div class="mode active" data-m="2">鲸鱼</div>
-  <div class="mode" data-m="4">水母</div>
+  <div class="mode" data-m="1">Primordial</div>
+  <div class="mode active" data-m="2">Whale</div>
+  <div class="mode" data-m="4">Jellyfish</div>
 </div>
 <div id="ctl">
-  <div class="mini" id="playpause" title="播放/暂停">⏸</div>
-  <div class="mini" id="another" title="换一首/换源">⤢</div>
-  <div class="mini" id="fullscreen" title="全屏">⛶</div>
+  <div class="mini" id="playpause" title="Play / Pause">⏸</div>
+  <div class="mini" id="another" title="Next / Switch Source">⤢</div>
+  <div class="mini" id="fullscreen" title="Fullscreen">⛶</div>
 </div>
 <div id="vg"></div>
 
@@ -78,7 +78,7 @@
 <script src="lib/UnrealBloomPass.js"></script>
 <script>
 "use strict";
-// ==================== 全局 ====================
+// ==================== Global ====================
 var scene, camera, renderer, controls, composer, bloom, clock;
 var audioCtx, analyser, freqData, timeData, audioEl, mediaSource, micStream, playing=false;
 var W=window.innerWidth, H=window.innerHeight;
@@ -88,16 +88,16 @@ var bass=0, mid=0, treble=0, overall=0, beat=0, beatHold=0;
 var bassS=0, midS=0, trebleS=0, overallS=0, hueBase=0.58;
 var camPunch=0, camRoll=0, flowEnergy=0;
 
-var orb;                       // 统一的球体（组）
-var shells=[];                 // 多层粒子球壳（同一形体的体积层）
-var heart, heartWire;          // 内部发光核
-var flowCreature, flowMat, flowN=72000;   // 内部曲旋流动生命体
+var orb;                       // the unified orb (group)
+var shells=[];                 // layered particle shells (volume layers of the same form)
+var heart, heartWire;          // inner glowing core
+var flowCreature, flowMat, flowN=72000;   // inner curl-flow living creature
 var stars, starMat, nebula=[], shockwaves=[];
-var whales=[];                  // 流体状鲸鱼列表(0蓝鲸 1座头鲸 2抹香鲸)
-var whaleCooldown=0, notes=[], noteTexCache={}, jellies=[], puffs=[];   // 全局 spawn 数组
-var vizMode=2, spawnCooldown=0;   // 效果模式：1本原 2鲸鱼 4水母
+var whales=[];                  // fluid whale list (0 blue 1 humpback 2 sperm)
+var whaleCooldown=0, notes=[], noteTexCache={}, jellies=[], puffs=[];   // global spawn arrays
+var vizMode=2, spawnCooldown=0;   // visual mode: 1 primordial 2 whale 4 jellyfish
 
-// ---------- GLSL: 3D 单纯形噪声 (Ashima) ----------
+// ---------- GLSL: 3D simplex noise (Ashima) ----------
 var SNOISE=[
 "vec3 mod289(vec3 x){return x-floor(x*(1.0/289.0))*289.0;}",
 "vec4 mod289(vec4 x){return x-floor(x*(1.0/289.0))*289.0;}",
@@ -126,7 +126,7 @@ var SNOISE=[
 
 var HSL="vec3 hsl2rgb(float h,float s,float l){vec3 r=clamp(abs(mod(h*6.0+vec3(0.0,4.0,2.0),6.0)-3.0)-1.0,0.0,1.0);return l+s*(r-0.5)*(1.0-abs(2.0*l-1.0));}";
 
-// ---------- GLSL: 曲旋噪声（无散度旋涡流场，产生翻涌流动的生命感）----------
+// ---------- GLSL: curl noise (divergence-free vortex field for a churning, living flow) ----------
 var CURL=[
 "vec3 snoiseVec3(vec3 x){",
 " float s=snoise(x);",
@@ -146,7 +146,7 @@ var CURL=[
 init();
 animate();
 
-// ==================== 初始化 ====================
+// ==================== Init ====================
 function init(){
   scene=new THREE.Scene();
   scene.fog=new THREE.FogExp2(0x010109,0.0010);
@@ -159,7 +159,7 @@ function init(){
   renderer.setSize(W,H);
   renderer.setClearColor(0x010109,1);
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=0.72;              // 压低整体亮度
+  renderer.toneMappingExposure=0.72;              // keep overall brightness low
   document.body.appendChild(renderer.domElement);
 
   controls=new THREE.OrbitControls(camera,renderer.domElement);
@@ -171,7 +171,7 @@ function init(){
   buildFreqTex();
   buildStars();
   buildNebula();
-  buildOrb();          // 统一球体
+  buildOrb();          // unified orb
   buildLights();
   buildPost();
 
@@ -185,7 +185,7 @@ function buildFreqTex(){
   freqTex.minFilter=THREE.LinearFilter;freqTex.magFilter=THREE.LinearFilter;freqTex.needsUpdate=true;
 }
 
-// 极细柔光圆点贴图
+// ultra-fine soft glow dot texture
 function softTex(){
   var s=64,c=document.createElement('canvas');c.width=c.height=s;
   var x=c.getContext('2d');
@@ -198,7 +198,7 @@ function softTex(){
   return new THREE.CanvasTexture(c);
 }
 
-// ---------- 环境：暗淡星空 ----------
+// ---------- Environment: dim starfield ----------
 function buildStars(){
   var n=26000,pos=new Float32Array(n*3),col=new Float32Array(n*3),sz=new Float32Array(n);
   var c=new THREE.Color();
@@ -206,12 +206,12 @@ function buildStars(){
     var r=700+Math.random()*4200,th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
     pos[i*3]=r*Math.sin(ph)*Math.cos(th);pos[i*3+1]=r*Math.cos(ph)*0.7;pos[i*3+2]=r*Math.sin(ph)*Math.sin(th);
     var t=Math.random();
-    // 更明显、更绚丽的多色星海
-    if(t<0.22)c.setHSL(0.58,0.85,0.72);        // 蓝
-    else if(t<0.40)c.setHSL(0.11,0.9,0.72);    // 金
-    else if(t<0.52)c.setHSL(0.88,0.8,0.72);    // 品红
-    else if(t<0.62)c.setHSL(0.48,0.8,0.72);    // 青
-    else c.setHSL(0.6,0.15,0.85);              // 冷白
+    // more vivid, colorful star sea
+    if(t<0.22)c.setHSL(0.58,0.85,0.72);        // blue
+    else if(t<0.40)c.setHSL(0.11,0.9,0.72);    // gold
+    else if(t<0.52)c.setHSL(0.88,0.8,0.72);    // magenta
+    else if(t<0.62)c.setHSL(0.48,0.8,0.72);    // cyan
+    else c.setHSL(0.6,0.15,0.85);              // cold white
     col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b;sz[i]=1.0+Math.random()*2.6;
   }
   var g=new THREE.BufferGeometry();
@@ -247,8 +247,8 @@ function buildNebula(){
   }
 }
 
-// ==================== 统一球体 ====================
-// 每层球壳的粒子材质：频谱纹理逐点驱动径向位移 + 有机噪声抖动
+// ==================== Unified Orb ====================
+// per-shell particle material: spectrum texture drives radial displacement point-by-point + organic noise wobble
 function shellMaterial(sizeMul, lightBias){
   return new THREE.ShaderMaterial({
     uniforms:{
@@ -265,37 +265,37 @@ function shellMaterial(sizeMul, lightBias){
       "  float amp=texture2D(uFreqTex,vec2(aFreq,0.5)).r;",
       "  vAmp=amp;",
       "  float R=length(position);vec3 dir=position/R;",
-      "  float wob=snoise(dir*2.4+vec3(0.0,0.0,uTime*0.22));",           // 有机三维抖动，处处不同
-      "  float hi=snoise(dir*6.0+vec3(uTime*0.4));",                     // 高频细颤
-      "  float pulse=sin(R*0.05 - uFlow*2.2)*(1.5+uBass*9.0+uMid*4.0);", // 从生命体向外发射的行波脉冲
-      "  float rr=R + amp*(R*0.30+13.0)",                               // 该点频段越强越向外撑（圆润不尖）
+      "  float wob=snoise(dir*2.4+vec3(0.0,0.0,uTime*0.22));",           // organic 3D wobble, unique everywhere
+      "  float hi=snoise(dir*6.0+vec3(uTime*0.4));",                     // high-frequency shimmer
+      "  float pulse=sin(R*0.05 - uFlow*2.2)*(1.5+uBass*9.0+uMid*4.0);", // traveling pulse emitted outward from the creature
+      "  float rr=R + amp*(R*0.30+13.0)",                               // stronger band at this point pushes it further out (rounded, not spiky)
       "          + wob*(1.2+amp*3.0)",
       "          + hi*uTreble*3.5",
-      "          + pulse",                                              // 内外联动
-      "          + uBass*4.0 + uBeat*7.0;",                             // 节拍整体外扩
+      "          + pulse",                                              // inner/outer coupling
+      "          + uBass*4.0 + uBeat*7.0;",                             // beat pushes everything outward
       "  vec3 p=dir*rr;",
       "  float h=mod(uHue + aFreq*0.75 + amp*0.28 + wob*0.03,1.0);",
-      "  vCol=hsl2rgb(h,0.92,0.30+amp*0.32);",                          // 更绚丽
+      "  vCol=hsl2rgb(h,0.92,0.30+amp*0.32);",                          // more vivid
       "  vec4 mv=modelViewMatrix*vec4(p,1.0);",
-      "  gl_PointSize=aScale*uSize*(0.5+amp*2.4)*(200.0/-mv.z)*uPix;",  // 极细腻，安静时几乎不可见
+      "  gl_PointSize=aScale*uSize*(0.5+amp*2.4)*(200.0/-mv.z)*uPix;",  // ultra-fine, nearly invisible when quiet
       "  gl_Position=projectionMatrix*mv;}"
     ].join("\n"),
     fragmentShader:[
       "uniform sampler2D uTex;varying vec3 vCol;varying float vAmp;",
       "void main(){vec4 t=texture2D(uTex,gl_PointCoord);if(t.a<0.02)discard;",
       "  vec3 col=vCol*(0.45+vAmp*1.25);",
-      "  float a=t.a*(0.35+vAmp*0.65);",                                // 安静区域更暗，避免过亮
+      "  float a=t.a*(0.35+vAmp*0.65);",                                // quieter areas stay dimmer, avoids blowout
       "  gl_FragColor=vec4(col,1.0)*a;}"
     ].join("\n"),
     transparent:true,blending:THREE.AdditiveBlending,depthWrite:false
   });
 }
 
-// 生成一层斐波那契球壳
+// build one Fibonacci sphere shell
 function makeShell(count,radius,scaleMin,scaleMax,sizeMul,jitter){
   var pos=new Float32Array(count*3),freq=new Float32Array(count),
       seed=new Float32Array(count),scl=new Float32Array(count);
-  var GA=Math.PI*(3-Math.sqrt(5));                                     // 黄金角
+  var GA=Math.PI*(3-Math.sqrt(5));                                     // golden angle
   for(var i=0;i<count;i++){
     var y=1-(i/(count-1))*2;                                          // 1..-1
     var rad=Math.sqrt(1-y*y);
@@ -303,7 +303,7 @@ function makeShell(count,radius,scaleMin,scaleMax,sizeMul,jitter){
     var nx=Math.cos(th)*rad, ny=y, nz=Math.sin(th)*rad;
     var rr=radius*(1+(Math.random()-0.5)*jitter);
     pos[i*3]=nx*rr;pos[i*3+1]=ny*rr;pos[i*3+2]=nz*rr;
-    // 频率映射：用经纬构成的多分区图案 → 全球面遍布众多独立律动区
+    // frequency mapping: multi-zone pattern from lat/lon -> many independent rhythm zones across the sphere
     var lat=Math.asin(Math.max(-1,Math.min(1,ny)));
     var lon=Math.atan2(nz,nx);
     var pattern=0.5+0.5*Math.sin(lat*5.0)*Math.cos(lon*4.0);
@@ -325,14 +325,14 @@ function makeShell(count,radius,scaleMin,scaleMax,sizeMul,jitter){
 
 function buildOrb(){
   orb=new THREE.Group();
-  // 三层体积球壳（疏密+半径不同，构成一个有厚度的整体）
+  // three volumetric shells (varying density + radius, forming a body with thickness)
   var s1=makeShell(90000, 96, 0.30,0.75, 0.85, 0.02);
   var s2=makeShell(55000,120, 0.26,0.62, 0.72, 0.05);
   var s3=makeShell(30000,150, 0.22,0.52, 0.60, 0.10);
   shells=[s1,s2,s3];
   orb.add(s1);orb.add(s2);orb.add(s3);
 
-  // 内部发光核（收缩为紧致核心，让流动生命体成为主体包裹它）
+  // inner glowing core (compact, wrapped by the flow creature as the main body)
   var hg=new THREE.IcosahedronGeometry(34,28);
   var hmat=new THREE.ShaderMaterial({
     uniforms:{uTime:{value:0},uFlow:{value:0},uBass:{value:0},uMid:{value:0},uTreble:{value:0},
@@ -344,15 +344,15 @@ function buildOrb(){
       "void main(){",
       "  vec3 dir=normalize(position);",
       "  float lat=asin(clamp(dir.y,-1.0,1.0));float lon=atan(dir.z,dir.x);",
-      "  float fpat=0.5+0.5*sin(lat*4.0)*cos(lon*3.0);",                 // 与外壳呼应的频率分区
+      "  float fpat=0.5+0.5*sin(lat*4.0)*cos(lon*3.0);",                 // frequency zones echoing the shells
       "  float fslot=clamp(0.03+fpat*0.6,0.0,0.66);",
       "  float amp=texture2D(uFreqTex,vec2(fslot,0.5)).r;vAmp=amp;",
-      "  float flow=fbm(dir*1.8+vec3(0.0,uFlow*0.6,uFlow));",           // 翻涌，相位随能量推进
-      "  float ripple=snoise(dir*7.0+vec3(uFlow*2.0))*uTreble;",        // 高频细颤
-      "  float wave=sin(lat*6.0-uFlow*3.0)*uMid;",                      // 中频沿纬度行进的波
-      "  float disp=flow*(7.0+uBass*36.0)",                             // 低频翻涌鼓胀
-      "           +amp*amp*28.0",                                       // 该区频段越强越鼓起
-      "           +ripple*4.5 +wave*5.5 +uBeat*9.0;",                   // 细颤+行波+节拍脉冲
+      "  float flow=fbm(dir*1.8+vec3(0.0,uFlow*0.6,uFlow));",           // churning, phase advances with energy
+      "  float ripple=snoise(dir*7.0+vec3(uFlow*2.0))*uTreble;",        // high-frequency shimmer
+      "  float wave=sin(lat*6.0-uFlow*3.0)*uMid;",                      // mid-frequency wave traveling along latitude
+      "  float disp=flow*(7.0+uBass*36.0)",                             // bass churn swells outward
+      "           +amp*amp*28.0",                                       // stronger band bulges more
+      "           +ripple*4.5 +wave*5.5 +uBeat*9.0;",                   // shimmer + wave + beat pulse
       "  vD=disp;vec3 p=position+dir*disp;",
       "  vN=normalize(normalMatrix*normal);",
       "  vec4 mv=modelViewMatrix*vec4(p,1.0);vV=normalize(-mv.xyz);gl_Position=projectionMatrix*mv;}"].join("\n"),
@@ -362,7 +362,7 @@ function buildOrb(){
       " float h=mod(uHue+vD*0.008+fr*0.2+vAmp*0.1,1.0);",
       " vec3 base=hsl2rgb(h,0.85,0.14+vAmp*0.14);",
       " vec3 rim=hsl2rgb(mod(h+0.5,1.0),0.9,0.34);",
-      " vec3 col=mix(base*(0.22+uBass*0.5),rim,fr)+rim*fr*0.6+base*vAmp*0.5;",  // 被声音激活的区域提亮
+      " vec3 col=mix(base*(0.22+uBass*0.5),rim,fr)+rim*fr*0.6+base*vAmp*0.5;",  // sound-activated regions brighten
       " gl_FragColor=vec4(col,1.0);}"].join("\n")
   });
   heart=new THREE.Mesh(hg,hmat);orb.add(heart);
@@ -372,18 +372,18 @@ function buildOrb(){
     new THREE.LineBasicMaterial({color:0x466096,transparent:true,opacity:0.05,blending:THREE.AdditiveBlending,depthWrite:false}));
   orb.add(heartWire);
 
-  // 内部曲旋流动生命体：curl-noise 驱动的 4 万颗粒子在球内持续翻涌，流速由音乐能量控制
+  // inner curl-flow creature: 72k particles churn inside the sphere, flow speed driven by music energy
   buildFlowCreature();
 
   scene.add(orb);
 }
 
-// ---------- 曲旋流动生命体 ----------
+// ---------- Curl-Flow Creature ----------
 function buildFlowCreature(){
   var pos=new Float32Array(flowN*3),freq=new Float32Array(flowN),
       seed=new Float32Array(flowN),scl=new Float32Array(flowN),base=new Float32Array(flowN*3);
   for(var i=0;i<flowN;i++){
-    // 球体内均匀分布
+    // uniform distribution inside the sphere
     var r=Math.pow(Math.random(),0.45)*66;
     var th=Math.random()*Math.PI*2,ph=Math.acos(2*Math.random()-1);
     var x=r*Math.sin(ph)*Math.cos(th),y=r*Math.cos(ph)*0.85,z=r*Math.sin(ph)*Math.sin(th);
@@ -411,21 +411,21 @@ function buildFlowCreature(){
       "attribute float aFreq,aSeed,aScale;attribute vec3 aBase;varying vec3 vC;varying float vA;",
       "void main(){",
       "  float amp=texture2D(uFreqTex,vec2(aFreq,0.5)).r;vA=amp;",
-      // flowSpeed 跟着音乐走：整体+低频+中频 → 越嗨流得越快
+      // flow speed follows the music: overall + bass + mid -> flows faster when the track heats up
       "  float speed=0.5+uBass*5.5+uMid*3.6+uTreble*2.0;",
       "  float seed=aSeed*6.283;",
-      // 曲旋噪声驱动位置：粒子沿无散度旋涡流场流动（更强、更黏稠的流动性）
+      // curl noise drives position: particles flow along the divergence-free vortex field (thicker, stickier flow)
       "  float sp=uFlow*speed*0.2;",
       "  vec3 cp=aBase+vec3(sin(seed)*sp,cos(seed)*sp,seed*0.2);",
       "  vec3 curl=curlNoise(cp*0.05+vec3(uTime*0.3));",
-      "  vec3 curl2=curlNoise(cp*0.13+vec3(uTime*0.5+11.0));",           // 二阶湍流，细节更丰富
-      // 径向撑胀改用 amp（非 amp*amp）并降幅 → 突刺更圆润不尖锐
+      "  vec3 curl2=curlNoise(cp*0.13+vec3(uTime*0.5+11.0));",           // second-order turbulence for richer detail
+      // radial swelling uses amp (not amp*amp) at reduced scale -> softer, rounder protrusions
       "  float push=amp*(7.0+uBass*13.0)+uBeat*4.0;",
       "  vec3 p=aBase",
-      "        + curl*(4.0+uBass*9.0+amp*5.0)",                         // 主流场（流动为主）
-      "        + curl2*(2.0+uMid*5.0)",                                 // 湍流细节
-      "        + normalize(aBase+0.001)*push;",                         // 柔和径向呼吸
-      // 色相：更宽的色域 + 更高饱和 → 绚丽
+      "        + curl*(4.0+uBass*9.0+amp*5.0)",                         // main flow field (flow-dominant)
+      "        + curl2*(2.0+uMid*5.0)",                                 // turbulence detail
+      "        + normalize(aBase+0.001)*push;",                         // soft radial breathing
+      // hue: wider gamut + higher saturation -> vivid
       "  float h=mod(uHue+aFreq*0.85+amp*0.35+length(curl)*0.25+length(p)*0.006,1.0);",
       "  vC=hsl2rgb(h,0.95,0.16+amp*0.32);",
       "  vec4 mv=modelViewMatrix*vec4(p,1.0);",
@@ -452,12 +452,12 @@ function buildPost(){
   composer=new THREE.EffectComposer(renderer);
   composer.addPass(new THREE.RenderPass(scene,camera));
   bloom=new THREE.UnrealBloomPass(new THREE.Vector2(W,H),0.7,0.6,0.4);
-  bloom.threshold=0.42;bloom.strength=0.62;bloom.radius=0.5;   // 克制的辉光
+  bloom.threshold=0.42;bloom.strength=0.62;bloom.radius=0.5;   // restrained glow
   composer.addPass(bloom);
   composer.addPass(new THREE.ShaderPass(THREE.GammaCorrectionShader));
 }
 
-// ==================== 音频 ====================
+// ==================== Audio ====================
 function ensureCtx(){
   if(!audioCtx){
     audioCtx=new (window.AudioContext||window.webkitAudioContext)();
@@ -476,8 +476,8 @@ function useMic(){
   ensureCtx();
   navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
     micStream=stream;mediaSource=audioCtx.createMediaStreamSource(stream);mediaSource.connect(analyser);
-    playing=true;setCoverOff();updatePlayBtn();showTrack('◉ 麦克风现场采集');
-  }).catch(function(e){console.warn('麦克风不可用：'+e.message);});
+    playing=true;setCoverOff();updatePlayBtn();showTrack('◉ Live Microphone');
+  }).catch(function(e){console.warn('Microphone unavailable: '+e.message);});
 }
 function analyze(){
   if(!analyser)return;
@@ -500,7 +500,7 @@ function analyze(){
   if(beatHold>0)beatHold--;
 }
 
-// ---------- 3D 冲击波（球面波，非平面）----------
+// ---------- 3D shockwave (spherical wave, not planar) ----------
 function spawnShock(){
   var col=new THREE.Color().setHSL(hueBase,0.75,0.45);
   var w=new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.SphereGeometry(80,72,44)),
@@ -516,41 +516,41 @@ function updateShock(dt){
   }
 }
 
-// ==================== 流体鲸鱼 ====================
-// 程序化生成一头鲸鱼的点云剪影：纺锤状身体 + 后掠尾鳍 + 一对胸鳍
+// ==================== Fluid Whales ====================
+// procedurally generate a whale point-cloud silhouette: spindle body + swept tail fluke + a pair of pectoral fins
 function makeWhaleGeometry(type){
   var pts=[];                              // [x,y,z]
-  var scl=[];                              // 每点尺寸
+  var scl=[];                              // per-point size
   var L, R, finLen, flukeW, headFull;
-  if(type===0){ L=200; R=26; finLen=34;  flukeW=78;  headFull=0.85; }   // 蓝鲸：修长
-  else if(type===1){ L=150; R=34; finLen=74; flukeW=70; headFull=1.05; } // 座头鲸：短壮·长胸鳍
-  else { L=140; R=40; finLen=26; flukeW=58; headFull=1.35; }            // 抹香鲸：巨钝头
+  if(type===0){ L=200; R=26; finLen=34;  flukeW=78;  headFull=0.85; }   // blue whale: slender
+  else if(type===1){ L=150; R=34; finLen=74; flukeW=70; headFull=1.05; } // humpback: stout + long pectorals
+  else { L=140; R=40; finLen=26; flukeW=58; headFull=1.35; }            // sperm whale: massive blunt head
   function push(x,y,z,s){pts.push(x,y,z);scl.push(s);}
-  // ---- 身体（体积云，偏表面）----
+  // ---- body (volume cloud, surface-biased) ----
   var NB=5200;
   for(var i=0;i<NB;i++){
-    var t=Math.random();                                   // 0鼻→1尾
+    var t=Math.random();                                   // 0 nose -> 1 tail
     var x=L*(0.5-t);
-    var head=Math.min(1,t/0.12);                           // 圆钝鼻端渐起
-    var taper=1-smooth(0.4,0.98,t);                        // 向尾渐细
+    var head=Math.min(1,t/0.12);                           // rounded nose builds up
+    var taper=1-smooth(0.4,0.98,t);                        // tapers toward the tail
     var g=R*(0.35+0.65*head*headFull)*(0.10+0.90*taper);
     var th=Math.random()*Math.PI*2;
     var rr=g*Math.pow(Math.random(),0.34);
-    var y=Math.sin(th)*rr - g*0.10;                        // 略腹部下沉
+    var y=Math.sin(th)*rr - g*0.10;                        // slight belly sag
     var z=Math.cos(th)*rr*0.9;
     push(x,y,z,0.7+Math.random()*1.1);
   }
-  // ---- 尾鳍（水平双叶，后掠）----
+  // ---- tail fluke (horizontal twin lobes, swept back) ----
   var NF=1300;
   for(var i=0;i<NF;i++){
     var u=(Math.random()*2-1), v=Math.random();
     var zf=u*flukeW*(0.28+0.72*v);
     var xf=-L*0.5 - v*flukeW*0.42 - Math.abs(u)*flukeW*0.18;
-    if(Math.abs(u)<0.12) xf+=flukeW*0.16;                  // 中央凹口
+    if(Math.abs(u)<0.12) xf+=flukeW*0.16;                  // center notch
     var yf=(Math.random()-0.5)*flukeW*0.05;
     push(xf,yf,zf,0.6+Math.random()*0.8);
   }
-  // ---- 一对胸鳍（体侧后掠）----
+  // ---- pair of pectoral fins (swept back along the flanks) ----
   var NP=640;
   for(var s=-1;s<=1;s+=2){
     for(var i=0;i<NP;i++){
@@ -585,8 +585,8 @@ function whaleMaterial(hue){
       "varying float vA;",
       "void main(){",
       "  vA=aSeed;",
-      "  vec3 flow=curlNoise(position*0.018+vec3(0.0,uTime*0.5,uTime*0.35));",  // 曲旋流体扰动
-      "  vec3 p=position+flow*uTurb;",                                          // 临终 uTurb 增大→化为流体消散
+      "  vec3 flow=curlNoise(position*0.018+vec3(0.0,uTime*0.5,uTime*0.35));",  // curl-flow perturbation
+      "  vec3 p=position+flow*uTurb;",                                          // uTurb grows near death -> dissolves into fluid
       "  vec4 mv=modelViewMatrix*vec4(p,1.0);",
       "  gl_PointSize=aScale*uSize*(250.0/-mv.z)*uPix;",
       "  gl_Position=projectionMatrix*mv;}"
@@ -603,21 +603,21 @@ function whaleMaterial(hue){
   });
 }
 
-// 从生命体表面撕裂出一头流体鲸鱼——抽离→成形→涌散
+// tear a fluid whale from the creature's surface — peel away -> form -> disperse
 function spawnWhale(intensity){
   if(whales.length>=4)return;
   var type=Math.floor(Math.random()*3);
   var hue=(hueBase+ (Math.random()-0.5)*0.18 +1)%1;
   var mat=whaleMaterial(hue);
   var mesh=new THREE.Points(makeWhaleGeometry(type),mat);
-  var th=Math.random()*Math.PI*2, ph=Math.acos(Math.random()*2-1);   // 全方向均匀分布
+  var th=Math.random()*Math.PI*2, ph=Math.acos(Math.random()*2-1);   // uniform distribution over all directions
   var dir=new THREE.Vector3(Math.sin(ph)*Math.cos(th),Math.cos(ph),Math.sin(ph)*Math.sin(th)).normalize();
-  mesh.position.copy(dir).multiplyScalar(88+Math.random()*14);   // 紧贴球体表面诞生
+  mesh.position.copy(dir).multiplyScalar(88+Math.random()*14);   // born right at the orb surface
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),dir);
   mesh.rotateOnAxis(new THREE.Vector3(1,0,0),Math.random()*Math.PI*2);
-  mesh.scale.setScalar(0.020);                                   // 出生即可见的流体团
-  mat.uniforms.uOpacity.value=0.42;                              // 首帧即可见
-  mat.uniforms.uTurb.value=26;                                   // 首帧即流体扰动
+  mesh.scale.setScalar(0.020);                                   // visible fluid blob from birth
+  mat.uniforms.uOpacity.value=0.42;                              // visible from the first frame
+  mat.uniforms.uTurb.value=26;                                   // fluid turbulence from the first frame
   scene.add(mesh);
   whales.push({mesh:mesh,mat:mat,dir:dir,life:0,
     maxLife:3.4+Math.random()*1.8,
@@ -630,32 +630,32 @@ function updateWhales(dt){
   for(var i=whales.length-1;i>=0;i--){
     var w=whales[i];w.life+=dt;var f=w.life/w.maxLife;
 
-    // 四阶段：剥离(0→0.12)→成形(0.12→0.30)→旅行(0.30→0.60)→涌散(0.60→1)
-    var peel=smooth(0.0,0.12,f);          // 0→1 从球体表面撕离
-    var form=smooth(0.12,0.30,f);         // 0→1 凝聚成形
-    var dissolve=smooth(0.60,0.82,f);     // 0→1 涌散
-    var done=smooth(0.82,1.0,f);          // 0→1 彻底消散
+    // four phases: peel (0->0.12) -> form (0.12->0.30) -> travel (0.30->0.60) -> disperse (0.60->1)
+    var peel=smooth(0.0,0.12,f);          // 0->1 tearing away from the orb surface
+    var form=smooth(0.12,0.30,f);         // 0->1 condensing into shape
+    var dissolve=smooth(0.60,0.82,f);     // 0->1 dispersing
+    var done=smooth(0.82,1.0,f);          // 0->1 fully dissolved
 
-    // 音乐驱动的律动调制（实时跟随音乐能量）
+    // music-driven rhythm modulation (follows music energy in real time)
     var musicGrow=1.0+bassS*0.8+beat*0.5;
     var musicSpeed=0.7+overallS*1.0+beat*0.6;
     var musicWob=overallS*3.5+beat*1.8;
 
-    // 位置：匀速连续外移，全程不封顶不停顿(消散在移动中完成)
+    // position: steady outward drift, never capped or paused (dissolve happens while moving)
     var base=88+14;
     var outDist=base+f*w.speed*musicSpeed*3.2;
     w.mesh.position.copy(w.dir).multiplyScalar(outDist);
     var distNow=w.mesh.position.length();
-    // 律动摆动：剥离时强烈→成形后骤减→越远越弱
+    // rhythm wobble: strong while peeling -> drops sharply after forming -> weaker farther out
     var wobDecay=(1-form*0.97)*(1-smooth(80,300,distNow));
-    // 律动只沿径向向外推，不回收
+    // rhythm only pushes outward along the radius, never pulls back
     var wobVal=Math.sin(w.life*3.8)*dt*musicWob*wobDecay;
     if(wobVal>0){w.mesh.position.x+=w.dir.x*wobVal;w.mesh.position.y+=w.dir.y*wobVal;w.mesh.position.z+=w.dir.z*wobVal;}
 
-    // 尺寸：剥离时已是可见流体团→成形中快速增长→旅行中稳态小增（受音乐加速）
-    var s=0.020 + peel*w.grow*musicGrow*0.20         // 剥离：已有体积，微增
-         + form*w.grow*musicGrow*0.55                // 成形：大幅增长
-         + smooth(0.30,0.55,f)*w.grow*musicGrow*0.15;// 旅行：缓缓膨大
+    // size: already a visible blob when peeling -> grows fast while forming -> steady small growth while traveling (accelerated by music)
+    var s=0.020 + peel*w.grow*musicGrow*0.20         // peel: already has volume, slight growth
+         + form*w.grow*musicGrow*0.55                // form: large growth
+         + smooth(0.30,0.55,f)*w.grow*musicGrow*0.15;// travel: slowly expanding
     w.mesh.scale.setScalar(s);
 
     w.mesh.rotateOnAxis(new THREE.Vector3(1,0,0),w.roll*dt);
@@ -664,18 +664,18 @@ function updateWhales(dt){
     u.uTime.value+=dt;
     u.uSize.value=(1.0+form*0.5)*(1-dissolve*0.55);
 
-    // 湍流：剥离时高(可见流体团)→成形时骤降(凝聚为鲸)→旅行低(清晰)→涌散高(化为流体)
-    // 涌散湍流随低频能量走→低频越强消散越剧烈
-    var turb=26*(1-peel)*(1-form*0.5)       // 剥离：强烈流体扰动
-           + (1.6+1.8*form)*(1-dissolve)    // 成形后：低湍流，清晰形体
-           + 24*dissolve*(0.5+bassS*1.2);   // 涌散：随bass增强湍流
+    // turbulence: high while peeling (visible blob) -> drops sharply when forming (condenses into a whale) -> low while traveling (clear) -> high when dispersing (back to fluid)
+    // dispersal turbulence follows bass energy -> stronger bass, more violent dissolve
+    var turb=26*(1-peel)*(1-form*0.5)       // peel: strong fluid agitation
+           + (1.6+1.8*form)*(1-dissolve)    // after forming: low turbulence, clear shape
+           + 24*dissolve*(0.5+bassS*1.2);   // disperse: turbulence scales with bass
     u.uTurb.value=turb;
 
-    // 透明度：始终可见(剥离时就是流体团)→涌散时淡出
-    var op=0.42+peel*0.28+form*0.2;        // 剥离起始即有 0.42→成形后达 0.9
-    op*=(1-dissolve)*(1-done);             // 涌散段淡出
+    // opacity: always visible (already a blob while peeling) -> fades out when dispersing
+    var op=0.42+peel*0.28+form*0.2;        // starts at 0.42 when peeling -> reaches 0.9 after forming
+    op*=(1-dissolve)*(1-done);             // fade out during dispersal
     var dist=w.mesh.position.length();
-    op*=(1-smooth(250,520,dist));          // 太远仍淡
+    op*=(1-smooth(250,520,dist));          // also fades when too far
     u.uOpacity.value=Math.min(0.92,op);
 
     if(f>=1){scene.remove(w.mesh);w.mesh.geometry.dispose();w.mat.dispose();whales.splice(i,1);}
@@ -683,18 +683,18 @@ function updateWhales(dt){
 }
 var whaleCooldown=0;
 
-// ==================== 水母系统 ====================
+// ==================== Jellyfish System ====================
 function makeJellyGeometry(type){
   var pts=[],scl=[];
   function push(x,y,z,s){pts.push(x,y,z);scl.push(s);}
   if(type===undefined)type=0;
-  // type0: 经典钟形水母  type1: 宽扁圆盘水母  type2: 高窄深海长须水母
+  // type0: classic bell jellyfish  type1: wide flat disc jellyfish  type2: tall narrow deep-sea long-tentacle jellyfish
   var R, TENT, tentLen, bellFlat;
-  if(type===0){R=48; TENT=8;  tentLen=2.6; bellFlat=0.82;}           // 经典
-  else if(type===1){R=62; TENT=14; tentLen=1.8; bellFlat=0.55;}      // 宽盘
-  else {R=34; TENT=6;  tentLen=4.0; bellFlat=0.95;}                  // 高窄长须
+  if(type===0){R=48; TENT=8;  tentLen=2.6; bellFlat=0.82;}           // classic
+  else if(type===1){R=62; TENT=14; tentLen=1.8; bellFlat=0.55;}      // wide disc
+  else {R=34; TENT=6;  tentLen=4.0; bellFlat=0.95;}                  // tall, narrow, long tentacles
 
-  // 伞盖
+  // bell dome
   var domeN=type===1?1800:(type===2?2200:2600);
   for(var i=0;i<domeN;i++){
     var u=Math.random(), ang=Math.random()*Math.PI*2;
@@ -704,14 +704,14 @@ function makeJellyGeometry(type){
     var flare=Math.pow(Math.sin(ph),3)*R*0.12;
     push(Math.cos(ang)*(rr+flare), y, Math.sin(ang)*(rr+flare), 0.6+Math.random()*1.0);
   }
-  // 伞盖内膜
+  // bell inner membrane
   var innerN=type===1?600:(type===2?700:900);
   for(var i=0;i<innerN;i++){
     var ang=Math.random()*Math.PI*2, ph=Math.random()*Math.PI*0.5;
     var rr=Math.sin(ph)*R*0.82, y=Math.cos(ph)*R*0.68;
     push(Math.cos(ang)*rr, y, Math.sin(ang)*rr, 0.5+Math.random()*0.7);
   }
-  // 触须
+  // tentacles
   var tentPts=type===2?340:420;
   for(var tb=0;tb<TENT;tb++){
     var a0=tb/TENT*Math.PI*2, br=R*(type===1?0.35:0.5);
@@ -725,7 +725,7 @@ function makeJellyGeometry(type){
       push(x+(Math.random()-0.5)*3, y+(Math.random()-0.5)*4, z+(Math.random()-0.5)*3, 0.4+Math.random()*0.7);
     }
   }
-  // type1额外：伞缘短须环（一圈细密小触须）
+  // type1 extra: short fringe ring around the bell edge (a dense ring of tiny tentacles)
   if(type===1){
     for(var k=0;k<800;k++){
       var ang=Math.random()*Math.PI*2;
@@ -733,7 +733,7 @@ function makeJellyGeometry(type){
       push(Math.cos(ang)*rr, (Math.random()-0.5)*8, Math.sin(ang)*rr, 0.35+Math.random()*0.55);
     }
   }
-  // 中央短口腕
+  // central short oral arms
   var wristN=type===0?600:(type===2?400:500);
   for(var k=0;k<wristN;k++){
     var ang=Math.random()*Math.PI*2, t=Math.random();
@@ -756,7 +756,7 @@ function jellyMaterial(hue){
       "void main(){vA=aSeed;",
       "  vec3 pp=position;",
       "  float rc=length(position.xz);",
-      "  pp.xz*=(1.0+uPulse*0.18);",                        // 伞盖搏动收放
+      "  pp.xz*=(1.0+uPulse*0.18);",                        // bell pulsing open/closed
       "  pp.y+=uPulse*rc*0.10;",
       "  vec3 flow=curlNoise(pp*0.02+vec3(0.0,uTime*0.4,uTime*0.3));",
       "  vec3 p=pp+flow*uTurb;vec4 mv=modelViewMatrix*vec4(p,1.0);",
@@ -771,14 +771,14 @@ function jellyMaterial(hue){
 }
 function spawnJelly(intensity){
   if(jellies.length>=4)return;
-  var hue=(0.50+Math.random()*0.16)%1;    // 青蓝→靛(水母冷光)
-  var type=Math.floor(Math.random()*3);   // 随机三种形态
+  var hue=(0.50+Math.random()*0.16)%1;    // cyan-blue -> indigo (jellyfish cold glow)
+  var type=Math.floor(Math.random()*3);   // random one of three forms
   var mat=jellyMaterial(hue);
   var mesh=new THREE.Points(makeJellyGeometry(type),mat);
   var th=Math.random()*Math.PI*2, ph=Math.acos(Math.random()*2-1);
   var dir=new THREE.Vector3(Math.sin(ph)*Math.cos(th),Math.cos(ph),Math.sin(ph)*Math.sin(th)).normalize();
   mesh.position.copy(dir).multiplyScalar(84+Math.random()*14);
-  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);   // 伞顶朝外
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);   // bell top faces outward
   mesh.rotateOnAxis(new THREE.Vector3(0,1,0),Math.random()*Math.PI*2);
   mesh.scale.setScalar(0.014);
   mat.uniforms.uOpacity.value=0.40;mat.uniforms.uTurb.value=26;
@@ -792,7 +792,7 @@ function updateJellies(dt){
     var peel=smooth(0.0,0.10,f),form=smooth(0.10,0.30,f);
     var dissolve=smooth(0.60,0.88,f),done=smooth(0.82,1.0,f);
 
-    // 音乐驱动的律动调制
+    // music-driven rhythm modulation
     var musicGrow=1.0+bassS*0.7+beat*0.5;
     var musicSpeed=0.7+overallS*1.0+beat*0.5;
     var musicWob=overallS*2.0+beat*1.0;
@@ -801,12 +801,12 @@ function updateJellies(dt){
     jf.mesh.position.copy(jf.dir).multiplyScalar(base+f*jf.speed*musicSpeed*3.0);
     var distNow=jf.mesh.position.length();
     var wobDecay=(1-form*0.97)*(1-smooth(80,300,distNow));
-    // 律动只沿径向向外推，不回收
+    // rhythm only pushes outward along the radius, never pulls back
     var wobVal=Math.sin(jf.life*3.2)*dt*musicWob*wobDecay;
     if(wobVal>0){jf.mesh.position.x+=jf.dir.x*wobVal;jf.mesh.position.y+=jf.dir.y*wobVal;jf.mesh.position.z+=jf.dir.z*wobVal;}
-    // 消散：形状自身粒子被湍流溶解
-    // 2026-08: 不再喷发背景光点粒子(puff)——用户要求水母背景和鲸鱼一样干净，
-    // 仅保留形状粒子自身的湍流淡出（上方 dissolve 已处理），避免背景累积"星星"
+    // dissolve: the shape's own particles are dissolved by turbulence
+    // 2026-08: no longer spawns background puff particles — user wants the jellyfish background as clean as the whales,
+    // keep only the shape particles' own turbulence fade-out (handled by dissolve above) to avoid star buildup in the background
     // if(!jf.puffed && f>=0.84){jf.puffed=true;spawnPuff(jf.mesh.position,(0.50+Math.random()*0.16)%1,280);}
 
     var s=0.014+peel*jf.grow*musicGrow*0.14+form*jf.grow*musicGrow*0.62+smooth(0.30,0.7,f)*jf.grow*musicGrow*0.12;
@@ -816,7 +816,7 @@ function updateJellies(dt){
     jf.pulse=Math.sin(jf.life*3.2)*0.5+0.5;
     u.uPulse.value=(jf.pulse*(0.5+bassS*1.2+beat*0.8))*form*(1-dissolve);
     u.uSize.value=(1.0+form*0.4)*(1-dissolve*0.55);
-    // 湍流：剥离高→成形低（清晰）→旅行中逐渐漂散→涌散水中溶解
+    // turbulence: high while peeling -> low when forming (clear) -> slowly drifts apart while traveling -> dissolves in the water when dispersing
     var turb=30*(1-peel)*(1-form*0.5)
            + (1.0+2.5*form)*(1-dissolve)
            + 20*dissolve*(0.7+bassS*1.0);
@@ -828,7 +828,7 @@ function updateJellies(dt){
   }
 }
 
-// ==================== 音乐符号 ====================
+// ==================== Music Notes ====================
 var NOTE_CHARS=['\u266A','\u266B','\u266C','\u2669','\uD834\uDD1E','\u266D']; // ♪ ♫ ♬ ♩ 𝄞 ♭
 function noteTex(ch){
   if(noteTexCache[ch])return noteTexCache[ch];
@@ -851,7 +851,7 @@ function spawnNote(intensity){
   var mat=new THREE.SpriteMaterial({map:noteTex(ch),color:col,transparent:true,
     opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
   var sp=new THREE.Sprite(mat);
-  var th=Math.random()*Math.PI*2, ph=Math.acos(Math.random()*2-1);   // 全方向均匀
+  var th=Math.random()*Math.PI*2, ph=Math.acos(Math.random()*2-1);   // uniform over all directions
   var dir=new THREE.Vector3(Math.sin(ph)*Math.cos(th),Math.cos(ph),Math.sin(ph)*Math.sin(th)).normalize();
   sp.position.copy(dir).multiplyScalar(80+Math.random()*20);
   var sz=15+Math.random()*11;sp.scale.set(sz,sz,1);
@@ -865,16 +865,16 @@ function spawnNote(intensity){
 function updateNotes(dt,t){
   for(var i=notes.length-1;i>=0;i--){
     var m=notes[i];m.life+=dt;var f=m.life/m.maxLife;
-    // 受生命体律动影响：低频/节拍推动外移
+    // driven by the creature's rhythm: bass/beat push them outward
     var rhythm=0.55+bassS*1.5+beat*1.3;
     m.sp.position.addScaledVector(m.dir,m.speed*rhythm*dt);
     m.speed*=(1-dt*0.15);
-    // 漂浮摆动，幅度随整体能量脉动
+    // floating sway, amplitude pulses with overall energy
     m.sp.position.y+=Math.sin(t*1.8+m.wob)*dt*(3.0+overallS*11.0);
     m.mat.rotation+=m.spin*dt*(1.0+beat*1.6);
     var life=smooth(0.0,0.14,f);
     var dissolve=smooth(0.60,1.0,f);
-    // 消散：进入消散期时炸开成细粒子（真正的粒子消散）
+    // dissolve: bursts into fine particles when entering the dissolve phase (true particle dissipation)
     if(!m.puffed && f>=0.62){m.puffed=true;spawnPuff(m.sp.position,m.hue,m.sz);}
     var sc=m.sz*(0.7+f*0.4)*(1.0+dissolve*0.6);
     m.sp.scale.set(sc,sc,1);
@@ -884,17 +884,17 @@ function updateNotes(dt,t){
   }
 }
 
-// ==================== 粒子消散 puff ====================
+// ==================== Particle Dissolve (puff) ====================
 function spawnPuff(pos,hue,sz,dir){
   var N=typeof sz==='number'?sz:70;
   var vel=new Float32Array(N*3), scl=new Float32Array(N), seed=new Float32Array(N);
   for(var i=0;i<N;i++){
     var th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
-    var sp=10+Math.random()*38;                         // 更快扩散
+    var sp=10+Math.random()*38;                         // faster spread
     var sx=Math.sin(ph)*Math.cos(th)*sp;
     var sy=Math.cos(ph)*sp+6;
     var szv=Math.sin(ph)*Math.sin(th)*sp;
-    // 有方向时叠加风偏：粒子整体向行进方向吹散
+    // with a direction, add wind bias: particles blow toward the travel direction
     if(dir){
       var wind=14+Math.random()*18;
       sx+=dir.x*wind; sy+=dir.y*wind; szv+=dir.z*wind;
@@ -909,7 +909,7 @@ function spawnPuff(pos,hue,sz,dir){
   var mat=new THREE.ShaderMaterial({
     uniforms:{uT:{value:0},uOpacity:{value:1},uHue:{value:hue},uTex:{value:softTex()},uPix:{value:renderer.getPixelRatio()}},
     vertexShader:["uniform float uT,uPix;attribute vec3 aVel;attribute float aScale;",
-      "void main(){vec3 p=aVel*uT + vec3(0.0,-6.0*uT*uT,0.0);",   // 扩散+轻微下沉
+      "void main(){vec3 p=aVel*uT + vec3(0.0,-6.0*uT*uT,0.0);",   // spread + slight sink
       "vec4 mv=modelViewMatrix*vec4(p,1.0);",
       "gl_PointSize=aScale*(220.0/-mv.z)*uPix*(1.0-uT*0.35);gl_Position=projectionMatrix*mv;}"].join("\n"),
     fragmentShader:["uniform sampler2D uTex;uniform float uOpacity,uHue;",
@@ -931,36 +931,38 @@ function updatePuffs(dt){
 }
 
 
-// ==================== 动画 ====================
+// ==================== Animation ====================
 function animate(){
   requestAnimationFrame(animate);
   var dt=Math.min(clock.getDelta(),0.05),t=clock.elapsedTime;
   analyze();
   hueBase=(hueBase+dt*0.025+overallS*dt*0.3)%1;
 
-  // 球壳（整体一起转动、各壳略微反向 → 有厚度的一个形体；接入流动能量与生命体联动）
+  // shells (rotate together, each slightly counter-rotating -> a body with thickness; tied to flow energy and the creature)
   for(var k=0;k<shells.length;k++){
     var m=shells[k].userData.mat;
     m.uniforms.uTime.value=t;m.uniforms.uBass.value=bassS;m.uniforms.uTreble.value=trebleS;m.uniforms.uHue.value=hueBase;
     m.uniforms.uFlow.value=flowEnergy;m.uniforms.uBeat.value=beat;m.uniforms.uMid.value=midS;
-    shells[k].rotation.y+=dt*(0.03+midS*0.18+bassS*0.12)*(k%2?-0.6:1);   // 转速随音乐
+    shells[k].rotation.y+=dt*(0.03+midS*0.18+bassS*0.12)*(k%2?-0.6:1);   // spin speed follows the music
     shells[k].rotation.x=Math.sin(t*0.08+k)*0.05;
   }
-  // 心脏（内部流动生命体）——流动相位由音乐能量累积推进
+  // heart (inner flow creature) — flow phase advances with accumulated music energy
   if(heart){
-    flowEnergy+=dt*(0.3+overallS*2.4+midS*1.0+beat*1.2);   // 有声翻涌快，安静缓流
+    flowEnergy+=dt*(0.3+overallS*2.4+midS*1.0+beat*1.2);   // churns fast with sound, slows when quiet
     var hu=heart.material.uniforms;
     hu.uTime.value=t;hu.uFlow.value=flowEnergy;
     hu.uBass.value=bassS;hu.uMid.value=midS;hu.uTreble.value=trebleS;
     hu.uBeat.value=beat;hu.uHue.value=hueBase;
     var s=1+bassS*0.4+beat*0.15;heart.scale.setScalar(s);
     heart.rotation.y+=dt*(0.08+midS*0.25);heart.rotation.x+=dt*0.03;
-    heartWire.scale.setScalar(1+bassS*0.18+beat*0.06);heartWire.rotation.y-=dt*(0.05+midS*0.15);
-    heartWire.material.opacity=0.03+trebleS*0.10+beat*0.06;
+    // 2026-08: outer wireframe orb rhythm strengthened — scale/brightness/spin all raised (user said it wasn't intense enough)
+    heartWire.scale.setScalar(1+bassS*0.40+beat*0.16);heartWire.rotation.y-=dt*(0.08+midS*0.28);
+    heartWire.material.opacity=0.05+trebleS*0.20+beat*0.12;
     heartWire.material.color.setHSL((hueBase+0.5)%1,0.6,0.5);
-    if(window._cl){window._cl.color.setHSL(hueBase,0.8,0.5);window._cl.intensity=0.7+bassS*2.2+beat*1.5;}
+    // 2026-08: center point light changed to a stable base light — old 0.7+bass*2.2+beat*1.5 peaked at 4.4 and lit the whole scene into a "big halo"
+    if(window._cl){window._cl.color.setHSL(hueBase,0.8,0.5);window._cl.intensity=0.85+bassS*0.30+beat*0.15;}
   }
-  // 内部流动生命体（曲旋粒子）——流速与幅度完全由音乐驱动
+  // inner flow creature (curl particles) — speed and amplitude fully music-driven
   if(flowCreature){
     var fu=flowMat.uniforms;
     fu.uTime.value=t;fu.uFlow.value=flowEnergy;
@@ -969,43 +971,45 @@ function animate(){
     flowCreature.rotation.y+=dt*(0.05+midS*0.3);
     flowCreature.rotation.z=Math.sin(t*0.12)*0.06;
   }
-  // 整个球体随低频轻微呼吸缩放 + 自动旋转（生命体自转，独立于相机）
+  // the whole orb breathes slightly with bass + auto-rotates (creature spins independently of the camera)
   if(orb){
     orb.scale.setScalar(1+bassS*0.12+beat*0.05);
     orb.rotation.y+=dt*(0.14+midS*0.35);
     orb.rotation.x=Math.sin(t*0.06)*0.12;
   }
 
-  // 环境：整个宇宙随音乐脉动
+  // environment: the whole universe pulses with the music
   if(stars){
     stars.rotation.y+=dt*(0.005+midS*0.02);
-    starMat.uniforms.uBoost.value=1.0+beat*1.6+trebleS*0.6+bassS*0.5;   // 节拍时星辰齐亮
-    stars.scale.setScalar(1+bassS*0.05+beat*0.03);                       // 星海随低频呼吸
+    // 2026-08: starfield toned down — beat no longer inflates particle size (old beat*1.6 peaked at 2.6x, looked grainy), keeping a faint breath
+    starMat.uniforms.uBoost.value=1.0+beat*0.45+trebleS*0.15+bassS*0.18;
+    stars.scale.setScalar(1+bassS*0.02+beat*0.01);
   }
   for(var i=0;i<nebula.length;i++){var sp=nebula[i];
-    sp.material.opacity=0.08+overallS*0.18+beat*0.08;                    // 更明显的星云
+    // 2026-08: nebula toned down — old 0.08+overall*0.18+beat*0.08 peaked at 0.34 and scaled with bass, creating large halos
+    sp.material.opacity=0.08+overallS*0.08+beat*0.03;
     sp.material.color.setHSL((sp.userData.hue+hueBase*0.4)%1,0.7,0.5);
-    sp.scale.x=sp.scale.y=sp.userData.baseScale?sp.userData.baseScale*(1+bassS*0.06):sp.scale.x;
+    sp.scale.x=sp.scale.y=sp.userData.baseScale?sp.userData.baseScale*(1+bassS*0.03):sp.scale.x;
   }
 
   updateShock(dt);
 
-  // 律动同步派发：强度=瞬时能量(决定大小/速度)，间隔随能量缩短，强拍即时触发→层次感
+  // rhythm dispatch: strength = instant energy (drives size/speed), interval shortens with energy, strong beats trigger instantly -> layering
   spawnCooldown-=dt;
-  var e=bassS*1.0+overallS*0.55+beat*0.9;                 // 律动强度
-  var beatHit=(beat>0.5 && spawnCooldown<-0.05);          // 强拍即时生成(留极小间隔防洪)
+  var e=bassS*1.0+overallS*0.55+beat*0.9;                 // rhythm strength
+  var beatHit=(beat>0.5 && spawnCooldown<-0.05);          // strong beat spawns instantly (tiny gap to prevent flooding)
   if(vizMode!==1 && ((spawnCooldown<=0 && e>0.34) || beatHit)){
-    var it=Math.min(1.5,0.32+e*0.95);                     // 越嗨生成的个体越大越快
+    var it=Math.min(1.5,0.32+e*0.95);                     // hotter music -> bigger, faster creatures
     if(vizMode===2)spawnWhale(it);
     else if(vizMode===4)spawnJelly(it);
-    spawnCooldown=2.2-Math.min(1.95,e*1.7);               // 能量越高间隔越短(0.25~2.2s)
+    spawnCooldown=2.2-Math.min(1.95,e*1.7);               // more energy -> shorter interval (0.25~2.2s)
   }
   updateWhales(dt);
   updateJellies(dt);
   updateNotes(dt,t);
-  updatePuffs(dt);   // 2026-08: 补上粒子生命周期更新——此前缺失导致 puff 永不清理、背景累积光点
+  updatePuffs(dt);   // 2026-08: added particle lifecycle update — previously missing, so puffs were never cleaned up and dots accumulated
 
-  // 相机：宏大缓动 + 节拍推拉 + 轻滚
+  // camera: grand easing + beat push-pull + slight roll
   camPunch*=0.86;camRoll*=0.9;
   var targetFov=58-bassS*8-camPunch*5;
   camera.fov+=(targetFov-camera.fov)*0.12;camera.updateProjectionMatrix();
@@ -1013,7 +1017,7 @@ function animate(){
   controls.autoRotateSpeed=0.32+midS*1.1;
   controls.update();
 
-  if(bloom)bloom.strength=0.5+overallS*0.9+beat*0.4;   // 克制
+  if(bloom)bloom.strength=0.38+overallS*0.15+beat*0.06;   // 2026-08: glow toned down, second pass — point light/nebula already reduced, bloom lowered further
 
   composer.render();
 }
@@ -1027,16 +1031,16 @@ function bindUI(){
   document.getElementById('fullscreen').addEventListener('click',function(){
     if(window.electronAPI && window.electronAPI.toggleFullscreen){window.electronAPI.toggleFullscreen();}
   });
-  // 双击画布也可以切换全屏
+  // double-clicking the canvas also toggles fullscreen
   renderer.domElement.addEventListener('dblclick',function(){
     if(window.electronAPI && window.electronAPI.toggleFullscreen){window.electronAPI.toggleFullscreen();}
   });
-  // ESC 退出全屏时更新按钮
+  // update button when ESC exits fullscreen
   document.addEventListener('fullscreenchange',function(){
     var btn=document.getElementById('fullscreen');
     btn.textContent=document.fullscreenElement?'⛶':'⛶';
     if(document.fullscreenElement){
-      // 全屏后 5 秒不动鼠标自动隐藏光标
+      // hide the cursor after 5s without mouse movement while fullscreen
       var hideTimer;
       function showCursor(){document.body.style.cursor='';clearTimeout(hideTimer);hideTimer=setTimeout(function(){document.body.style.cursor='none';},5000);}
       document.addEventListener('mousemove',showCursor);
@@ -1069,12 +1073,12 @@ function setMode(m){vizMode=m;spawnCooldown=0;clearAllSpawns();
   document.querySelectorAll('.mode').forEach(function(el){el.classList.toggle('active',parseInt(el.getAttribute('data-m'),10)===m);});
 }
 
-// 接收悬浮球右键菜单发来的样式切换
+// receive visual-mode switches from the orb's right-click menu
 if (window.electronAPI && window.electronAPI.onVizMode) {
   window.electronAPI.onVizMode(function(m){ setMode(m); });
 }
 
-// 接收屏保自动触发：直接使用麦克风开始拾音
+// receive the screensaver auto-trigger: start mic capture directly
 if (window.electronAPI && window.electronAPI.onAutoMic) {
   window.electronAPI.onAutoMic(function(){
     useMic();

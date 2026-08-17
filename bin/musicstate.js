@@ -1,4 +1,4 @@
-// musicstate.js — Windows 版检测脚本(Node 包装 PowerShell)
+// musicstate.js — Windows detection script (Node wrapper around PowerShell)
 // Modes:
 //   node musicstate.js --config <path> : detect mode. Reads JSON {"boundApps":["neteasemusic","spotify"]},
 //                                        matches ANY listed process name (substring, lowercased).

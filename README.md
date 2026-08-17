@@ -1,60 +1,60 @@
-# 发呆音宇宙 🎵
+# Fadai Universe 🎵
 
-一个会随音乐律动的屏幕生命体。打开你的音乐播放器，它的小球会出现；播放音乐且电脑空闲片刻，它会自动全屏，让声波化作球体、鲸鱼、水母在星海里游动。
+A living screen creature that dances with your music. Open your music player and its little orb appears; when music plays and your computer has been idle for a moment, it automatically goes fullscreen — turning sound waves into spheres, whales, and jellyfish drifting through a starry sea.
 
-**发呆音宇宙 · 进来发发呆**
+**Fadai Universe · come and daydream**
 
-## 功能特性
+## Features
 
-- 🎧 **绑定你的播放器**：首次启动选择你常用的音乐播放器（网易云 / QQ音乐 / Spotify / Apple Music 等，可多选），打开它时悬浮球自动出现
-- 🌌 **自动全屏屏保**：播放音乐 + 电脑空闲 60 秒 → 自动全屏律动（窗口已打开但没全屏也会自动切入全屏）
-- 🐋 **三种生命形态**：球体 / 鲸鱼 / 水母，随音乐节奏生成、律动、消散
-- ⛶ **退出全屏**：点右上角缩放按钮或按 ESC（晃动鼠标不会退出，避免误触）
-- 🎙️ **麦克风拾音**：采集环境音乐声音驱动实时可视化，全程本地运行、不上传任何数据
+- 🎧 **Bind your player**: on first launch, pick the music apps you use (NetEase Cloud Music / QQ Music / Spotify / Apple Music, etc., multi-select allowed). The floating orb appears automatically whenever a bound player is open
+- 🌌 **Auto-fullscreen screensaver**: music playing + 60s idle → automatic fullscreen visualization (even if the window is already open but not fullscreen, it switches in by itself)
+- 🐋 **Three living forms**: Orb / Whale / Jellyfish — born, dancing, and dissolving with the rhythm
+- ⛶ **Exit fullscreen**: click the ⛶ button or press ESC (wiggling the mouse does NOT exit — avoids accidental interrupts)
+- 🎙️ **Microphone input**: captures ambient music to drive real-time visuals. Runs 100% locally, nothing is ever uploaded
 
-## 下载安装
+## Download & Install
 
-前往 [Releases](https://github.com/Dadudu-AI/fadai-universe/releases) 下载对应平台的安装包：
+Grab the installer for your platform from [Releases](https://github.com/Dadudu-AI/fadai-universe/releases):
 
-| 平台 | 文件 | 说明 |
-|------|------|------|
-| macOS (Apple Silicon) | `fadai-universe-x.x.x-arm64.dmg` | 双击安装，拖入应用程序 |
-| Windows 10/11 x64 | `fadai-universe-Setup-x.x.x.exe` | 双击安装，按向导操作 |
+| Platform | File | Notes |
+|----------|------|-------|
+| macOS (Apple Silicon) | `fadai-universe-x.x.x-arm64.dmg` | Double-click to mount, drag into Applications |
+| Windows 10/11 x64 | `fadai-universe-Setup-x.x.x.exe` | Double-click and follow the wizard |
 
-> 未签名应用首次打开可能提示"无法验证开发者"（macOS 右键→打开；Windows 点"更多信息→仍要运行"），属正常现象。
+> Unsigned apps may warn "cannot verify developer" on first open (macOS: right-click → Open; Windows: More info → Run anyway). This is normal.
 
-## 使用
+## Usage
 
-1. 安装后首次打开，弹出「绑定音乐播放器」→ 选择你的播放器 → 保存
-2. 打开绑定的播放器 → 屏幕角落出现悬浮球
-3. 点悬浮球打开可视化；或等播放音乐 + 电脑空闲约 1 分钟自动全屏
-4. 换播放器：右键悬浮球 →「绑定播放器…」
+1. On first launch, the "Bind Music Player" window pops up → pick your players → Save
+2. Open a bound player → the floating orb appears in a screen corner
+3. Click the orb to open the visualization; or just let music play + ~1 minute idle for auto-fullscreen
+4. Switch players: right-click the orb → "Bind Player…"
 
-详细说明见 [使用说明.md](使用说明.md)
+See [USAGE.md](USAGE.md) for details.
 
-## 技术栈
+## Tech Stack
 
-- **Electron** 桌面封装（macOS + Windows）
-- **Three.js** 3D 可视化（粒子系统、Shader 特效、Bloom 后期）
-- **Web Audio API** 麦克风实时频谱分析
-- 播放器检测：macOS 用 Swift 原生探针（`bin/musicstate.swift`），Windows 用 PowerShell 脚本（`bin/musicstate.js`）
+- **Electron** desktop wrapper (macOS + Windows)
+- **Three.js** 3D visualization (particle systems, shader effects, Bloom post-processing)
+- **Web Audio API** real-time microphone spectrum analysis
+- Player detection: native Swift probe on macOS (`bin/musicstate.swift`), PowerShell script on Windows (`bin/musicstate.js`)
 
-## 开发
+## Development
 
 ```bash
 npm install
-npm start          # 本地运行
-npm run dist       # 打包 macOS dmg
-npx electron-builder --win --x64   # 打包 Windows exe
+npm start          # run locally
+npm run dist       # build macOS dmg
+npx electron-builder --win --x64   # build Windows exe
 ```
 
-> 国内网络打包前设置镜像：`export ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"`、`export ELECTRON_BUILDER_BINARIES_MIRROR="https://npmmirror.com/mirrors/electron-builder-binaries/"`
+> Building from China? Set mirrors first: `export ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"`, `export ELECTRON_BUILDER_BINARIES_MIRROR="https://npmmirror.com/mirrors/electron-builder-binaries/"`
 
-## 隐私
+## Privacy
 
-- 全程本地运行，不上传任何数据
-- 麦克风采集仅在 App 运行时进行，用于实时声波分析
-- 检测播放器状态只读取进程是否运行，不读取你的播放记录
+- Runs 100% locally, uploads nothing
+- Microphone capture only happens while the app is running, used for real-time sound analysis
+- Player detection only reads whether a process is running — it never reads your play history
 
 ---
-© 2026 发呆音宇宙
+© 2026 Fadai Universe

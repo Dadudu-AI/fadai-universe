@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>绑定音乐播放器</title>
+<title>Bind Music Player</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; }
@@ -95,41 +95,41 @@
 </head>
 <body>
   <div class="head">
-    <h1><span class="note">🎵</span>绑定音乐播放器</h1>
-    <p>选择你常用的音乐播放器。绑定后，<b style="color:#7cc4ff">打开它时悬浮球会自动出现</b>，播放音乐且电脑空闲时自动全屏律动。可多选，随时可在悬浮球右键菜单里修改。</p>
+    <h1><span class="note">🎵</span>Bind Music Player</h1>
+    <p>Pick the music players you use. Once bound, <b style="color:#7cc4ff">the floating orb appears automatically whenever one of them is open</b>, and it goes fullscreen with the music when your computer is idle. Multi-select supported; you can change this anytime from the orb's right-click menu.</p>
   </div>
   <div id="boundInfo" class="bound-info"></div>
-  <div class="search-row"><input id="search" placeholder="搜索应用…" autocomplete="off"></div>
-  <div id="list"><div class="loading">正在扫描运行中的应用</div></div>
+  <div class="search-row"><input id="search" placeholder="Search apps…" autocomplete="off"></div>
+  <div id="list"><div class="loading">Scanning running apps</div></div>
   <div class="foot">
-    <button id="skip">暂不绑定</button>
-    <button id="save">保存绑定</button>
+    <button id="skip">Skip for now</button>
+    <button id="save">Save Binding</button>
   </div>
 
 <script>
-  // 已知音乐播放器（bundleId → 展示名），用于置顶标注
+  // Known music players (bundleId -> display name), pinned to the top of the list
   const KNOWN_MUSIC = {
-    'com.netease.cloudmusic': '网易云音乐',
-    'com.netease.163music': '网易云音乐',
+    'com.netease.cloudmusic': 'NetEase Cloud Music',
+    'com.netease.163music': 'NetEase Cloud Music',
     'com.apple.Music': 'Apple Music',
     'com.spotify.client': 'Spotify',
-    'com.tencent.QQMusic': 'QQ音乐',
-    'com.kugou.music': '酷狗音乐',
-    'com.kuwo.kuwoMusic': '酷我音乐',
-    'com.migu.music': '咪咕音乐',
+    'com.tencent.QQMusic': 'QQ Music',
+    'com.kugou.music': 'KuGou Music',
+    'com.kuwo.kuwoMusic': 'KuWo Music',
+    'com.migu.music': 'Migu Music',
     'com.tidal.desktop': 'TIDAL',
     'com.apple.music': 'Apple Music',
-    'com.netease.music': '网易云音乐',
+    'com.netease.music': 'NetEase Cloud Music',
   };
-  // 进程名兜底（bundleId 缺失时）
+  // Process-name fallback (when bundleId is missing)
   const KNOWN_PROC = ['netease', 'cloudmusic', '163music', 'qqmusic', 'spotify', 'kuwo', 'kugou', 'yunmusic', 'music'];
 
   const listEl = document.getElementById('list');
   const searchEl = document.getElementById('search');
   const boundInfoEl = document.getElementById('boundInfo');
 
-  let apps = [];        // 全部应用 [{name, processName, bundleId, icon}]
-  let bound = [];       // 已绑定进程名（小写）
+  let apps = [];        // all apps [{name, processName, bundleId, icon}]
+  let bound = [];       // bound process names (lowercase)
   let selected = new Set();
 
   function isMusicApp(a) {
@@ -144,16 +144,16 @@
   function musicLabel(a) {
     const bid = a.bundleId || '';
     if (KNOWN_MUSIC[bid]) return KNOWN_MUSIC[bid];
-    return '音乐播放器';
+    return 'Music Player';
   }
 
   function render() {
     const q = searchEl.value.trim().toLowerCase();
     let list = apps.filter(a => !q || (a.name || '').toLowerCase().includes(q) || (a.processName || '').toLowerCase().includes(q));
-    // 已知播放器优先
+    // Known players first
     list.sort((a, b) => (isMusicApp(b) ? 1 : 0) - (isMusicApp(a) ? 1 : 0));
     if (list.length === 0) {
-      listEl.innerHTML = '<div class="empty">没有找到匹配的应用<br>请先打开你的音乐播放器，再点这里刷新</div>';
+      listEl.innerHTML = '<div class="empty">No matching apps found<br>Open your music player first, then refresh</div>';
       return;
     }
     listEl.innerHTML = '';
@@ -164,7 +164,7 @@
       const tag = isMusicApp(a) ? '<span class="music-tag">' + musicLabel(a) + '</span>' : '';
       div.innerHTML =
         '<div class="ic">' + ic + '</div>' +
-        '<div class="meta"><div class="nm">' + tag + escapeHtml(a.name || a.processName || '未知') + '</div>' +
+        '<div class="meta"><div class="nm">' + tag + escapeHtml(a.name || a.processName || 'Unknown') + '</div>' +
         '<div class="pn">' + escapeHtml(a.processName || '') + '</div></div>' +
         '<div class="chk"></div>';
       div.addEventListener('click', () => {
@@ -183,28 +183,28 @@
 
   function updateBoundInfo() {
     if (selected.size === 0) {
-      boundInfoEl.textContent = '尚未绑定 — 打开播放器时悬浮球不会出现';
+      boundInfoEl.textContent = 'Not bound yet — the orb won\'t appear when you open a player';
     } else {
       const names = apps.filter(a => selected.has(a.processName.toLowerCase())).map(a => a.name);
-      boundInfoEl.textContent = '已绑定：' + names.join('、');
+      boundInfoEl.textContent = 'Bound: ' + names.join(', ');
     }
   }
 
   function load() {
-    listEl.innerHTML = '<div class="loading">正在扫描运行中的应用</div>';
+    listEl.innerHTML = '<div class="loading">Scanning running apps</div>';
     Promise.all([window.bindAPI.listApps(), window.bindAPI.getBoundApps()])
       .then(([appList, boundApps]) => {
         apps = appList || [];
         bound = (boundApps || []).map(s => s.toLowerCase());
         bound.forEach(b => {
-          // 仅当该应用当前正在运行时默认勾选（否则无法确认名字对应）
+          // Only pre-check apps that are currently running (otherwise we can't confirm the name matches)
           if (apps.some(a => a.processName.toLowerCase() === b)) selected.add(b);
         });
         render();
         updateBoundInfo();
       })
       .catch(() => {
-        listEl.innerHTML = '<div class="empty">扫描失败，请重试</div>';
+        listEl.innerHTML = '<div class="empty">Scan failed, please retry</div>';
       });
   }
 
