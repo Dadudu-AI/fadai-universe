@@ -12,6 +12,7 @@
     "appId": "com.mgmeta.soundorb",
     "productName": "Fadai Universe",
     "asar": false,
+    "artifactName": "fadai-universe-${version}-${arch}.${ext}",
     "directories": {
       "output": "dist"
     },
@@ -45,7 +46,8 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Fadai Universe",
-      "language": "1033"
+      "language": "1033",
+      "artifactName": "fadai-universe-Setup-${version}.${ext}"
     }
   },
   "devDependencies": {
