@@ -8,6 +8,7 @@
   html,body{margin:0;padding:0;overflow:hidden;background:#010109;font-family:-apple-system,"PingFang SC",sans-serif;color:#c7d8f5;}
   canvas{display:block;}
   #cover{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:0 24px;box-sizing:border-box;
     background:radial-gradient(ellipse at center,#070c22 0%,#010109 72%);text-align:center;transition:opacity 1.1s;}
   #cover.off{opacity:0;pointer-events:none;}
   #cover h1{font-size:40px;letter-spacing:18px;margin:0 0 8px;font-weight:600;
@@ -15,7 +16,7 @@
     -webkit-background-clip:text;background-clip:text;color:transparent;animation:flow 8s linear infinite;
     filter:drop-shadow(0 0 16px rgba(110,140,230,.4));}
   @keyframes flow{to{background-position:220% center;}}
-  #cover p{font-size:13px;letter-spacing:3px;color:#6b7fb0;margin:4px 0;}
+  #cover p{font-size:13px;letter-spacing:3px;color:#6b7fb0;margin:4px 0;max-width:780px;line-height:1.7;}
   .btnrow{margin-top:30px;display:flex;gap:16px;flex-wrap:wrap;justify-content:center;}
   .btn{cursor:pointer;padding:14px 32px;border-radius:40px;font-size:14px;letter-spacing:3px;border:1px solid rgba(110,140,220,.35);
     background:rgba(24,40,90,.2);color:#cdd9f2;transition:.25s;backdrop-filter:blur(6px);}
@@ -80,6 +81,26 @@
   #fbmsg2{font-size:10.5px;letter-spacing:.4px;color:#6d81a8;margin-top:9px;min-height:13px;line-height:1.5;}
   #fbmsg2.err{color:#e08b8b;}
   #fbmsg2.ok{color:#7fd6a8;}
+
+  /* ---- 2026-11: responsive fixes — the 40px/18px headline broke into two lines and clipped
+     the subtitle on phones, and the three bottom bars collided under 720px ---- */
+  @media (max-width:720px){
+    #cover h1{font-size:25px;letter-spacing:9px;margin-bottom:6px;}
+    #cover p{font-size:11.5px;letter-spacing:1.4px;line-height:1.75;}
+    #cover p[style]{font-size:10.5px!important;}
+    .btnrow{margin-top:22px;gap:10px;}
+    .btn{padding:11px 22px;font-size:12px;letter-spacing:1.6px;}
+    .dlrow{flex-wrap:wrap;gap:5px 7px;font-size:9.5px;letter-spacing:.6px;margin-top:16px;}
+    .dlrow .lb{font-size:8.5px;letter-spacing:1.4px;}
+    #modes{bottom:74px;}
+    .mode{font-size:9.5px;padding:3px 9px;}
+    .fblink{font-size:9.5px;letter-spacing:1px;left:14px;bottom:14px;}
+    #fbbox{padding:20px 18px 14px;}
+  }
+  @media (max-width:380px){
+    #cover h1{font-size:21px;letter-spacing:6px;}
+    .btn{padding:10px 18px;font-size:11px;}
+  }
 </style>
 </head>
 <body>
@@ -147,7 +168,7 @@ var audioCtx, analyser, freqData, timeData, audioEl, mediaSource, micStream, pla
 var W=window.innerWidth, H=window.innerHeight;
 
 var freqTex, freqTexData, FTN=512;
-var bass=0, mid=0, treble=0, overall=0, beat=0, beatHold=0;
+var bass=0, mid=0, treble=0, overall=0, beat=0, beatHold=0, beatCool=0;
 var bassS=0, midS=0, trebleS=0, overallS=0, hueBase=0.58;
 var camPunch=0, camRoll=0, flowEnergy=0;
 
@@ -564,11 +585,22 @@ function analyze(dtn){
   overall=(bass*1.3+mid+treble*0.8)/3;
   // 2026-11: frame-rate independent smoothing. On 120Hz screens the old fixed coefficients
   // converged ~2x faster than on 60Hz, which is exactly why motion felt inconsistent/harsh.
-  var k1=1-Math.pow(1-0.28,dtn),k2=1-Math.pow(1-0.22,dtn),k3=1-Math.pow(1-0.32,dtn),k4=1-Math.pow(1-0.25,dtn);
+  // 2026-11: gentler envelopes (0.28→0.20 …). The old values tracked every bass wobble, so the
+  // orb's scale pulse read as vibration instead of breathing.
+  var k1=1-Math.pow(1-0.20,dtn),k2=1-Math.pow(1-0.17,dtn),k3=1-Math.pow(1-0.24,dtn),k4=1-Math.pow(1-0.19,dtn);
   bassS+=(bass-bassS)*k1;midS+=(mid-midS)*k2;trebleS+=(treble-trebleS)*k3;overallS+=(overall-overallS)*k4;
-  if(bass>bassS*1.22&&bass>0.4&&beatHold<=0){beat=1;beatHold=9;camPunch=1;camRoll=(Math.random()-0.5)*0.03;spawnShock();}
-  else beat*=Math.pow(0.9,dtn);
-  if(beatHold>0)beatHold--;
+  // 2026-11: beat envelope. The old version hard-set beat=1 and could re-fire every 150ms, so the
+  // orb snapped 6-7 times a second — that is the "too fast / jumpy" feel. Now: 220ms refractory,
+  // a higher trigger threshold, an eased attack, a softer camera punch and capped shockwaves.
+  beatCool-=dtn/60;
+  if(bass>bassS*1.32&&bass>0.42&&beatCool<=0){
+    beatCool=0.22;
+    beat=Math.min(1,beat+0.55);                       // rise instead of snap
+    camPunch=Math.min(camPunch+0.32,0.50);
+    camRoll=(Math.random()-0.5)*0.018;
+    if(shockwaves.length<3)spawnShock();              // never stack more than 3 rings
+  }
+  beat*=Math.pow(0.88,dtn);                           // long release
 }
 
 // ---------- 3D shockwave (spherical wave, not planar) ----------
@@ -1025,10 +1057,10 @@ function animate(){
     hu.uTime.value=t;hu.uFlow.value=flowEnergy;
     hu.uBass.value=bassS;hu.uMid.value=midS;hu.uTreble.value=trebleS;
     hu.uBeat.value=beat;hu.uHue.value=hueBase;
-    var s=1+bassS*0.4+beat*0.15;heart.scale.setScalar(s);
+    var s=1+bassS*0.26+beat*0.09;heart.scale.setScalar(s);
     heart.rotation.y+=dt*(0.08+midS*0.25);heart.rotation.x+=dt*0.03;
     // 2026-08: outer wireframe orb rhythm strengthened — scale/brightness/spin all raised (user said it wasn't intense enough)
-    heartWire.scale.setScalar(1+bassS*0.40+beat*0.16);heartWire.rotation.y-=dt*(0.08+midS*0.28);
+    heartWire.scale.setScalar(1+bassS*0.26+beat*0.10);heartWire.rotation.y-=dt*(0.08+midS*0.28);
     heartWire.material.opacity=0.05+trebleS*0.20+beat*0.12;
     heartWire.material.color.setHSL((hueBase+0.5)%1,0.6,0.5);
     // 2026-08: center point light changed to a stable base light — old 0.7+bass*2.2+beat*1.5 peaked at 4.4 and lit the whole scene into a "big halo"
@@ -1045,7 +1077,7 @@ function animate(){
   }
   // the whole orb breathes slightly with bass + auto-rotates (creature spins independently of the camera)
   if(orb){
-    orb.scale.setScalar(1+bassS*0.12+beat*0.05);
+    orb.scale.setScalar(1+bassS*0.075+beat*0.035);
     orb.rotation.y+=dt*(0.14+midS*0.35);
     orb.rotation.x=Math.sin(t*0.06)*0.12;
   }
