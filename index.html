@@ -40,6 +40,46 @@
     border:1px solid rgba(120,145,210,.22);background:rgba(20,32,66,.28);color:#94a5cf;transition:.25s;backdrop-filter:blur(6px);}
   .mode:hover{background:rgba(56,92,190,.42);color:#eef4ff;border-color:rgba(127,160,234,.6);}
   .mode.active{background:rgba(70,110,220,.48);color:#fff;border-color:rgba(140,172,240,.65);}
+
+  /* ---- 2026-11: download row — deliberately small & quiet ---- */
+  .dlrow{margin-top:24px;display:flex;align-items:center;justify-content:center;gap:9px;
+    font-size:10.5px;letter-spacing:1.4px;color:#3f4f75;transition:color .25s;}
+  .dlrow:hover{color:#5d70a0;}
+  .dlrow .lb{font-size:9px;letter-spacing:2.2px;color:#33415f;}
+  .dlrow a{color:#5a6f9e;text-decoration:none;border-bottom:1px solid rgba(90,111,158,.26);
+    padding-bottom:1px;transition:color .2s,border-color .2s;}
+  .dlrow a:hover{color:#a8c0f0;border-color:rgba(168,192,240,.65);}
+  .dlrow .dot{color:#2a3550;}
+
+  /* ---- 2026-11: feedback entry + modal ---- */
+  .fblink{position:fixed;left:18px;bottom:16px;z-index:26;font-size:11px;letter-spacing:1.8px;
+    color:#4e6187;cursor:pointer;opacity:0;transition:opacity .5s,color .2s;user-select:none;}
+  .fblink.show{opacity:.78;}
+  .fblink:hover{opacity:1;color:#a8c0f0;}
+  #fbmodal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
+    background:rgba(2,4,12,.74);backdrop-filter:blur(9px);padding:20px;}
+  #fbmodal.on{display:flex;}
+  #fbbox{width:100%;max-width:400px;border-radius:18px;padding:24px 24px 18px;
+    background:linear-gradient(165deg,#0d1533,#060a1a);border:1px solid rgba(95,125,205,.26);
+    box-shadow:0 28px 80px rgba(0,0,0,.72);}
+  #fbbox h3{margin:0 0 5px;font-size:14px;font-weight:600;letter-spacing:2.6px;color:#dbe6ff;}
+  #fbbox .sub{margin:0 0 15px;font-size:11px;letter-spacing:.5px;color:#5c6f99;line-height:1.65;}
+  #fbbox input,#fbbox textarea{width:100%;box-sizing:border-box;margin-bottom:10px;padding:11px 13px;
+    border-radius:11px;border:1px solid rgba(95,125,205,.24);background:rgba(10,17,38,.82);
+    color:#d3def7;font-size:12.5px;font-family:inherit;outline:none;transition:border-color .2s;}
+  #fbbox input:focus,#fbbox textarea:focus{border-color:rgba(127,160,234,.62);}
+  #fbbox textarea{height:92px;resize:none;line-height:1.6;}
+  #fbbox input::placeholder,#fbbox textarea::placeholder{color:#44536f;}
+  .fbrow{display:flex;gap:10px;justify-content:flex-end;margin-top:4px;}
+  .fbbtn{cursor:pointer;padding:9px 20px;border-radius:22px;font-size:11.5px;letter-spacing:1.8px;
+    border:1px solid rgba(110,140,220,.26);background:rgba(24,40,90,.22);color:#a9bce0;transition:.2s;}
+  .fbbtn:hover{background:rgba(56,92,190,.34);color:#eaf1ff;}
+  .fbbtn.primary{background:rgba(70,110,220,.5);border-color:rgba(140,172,240,.6);color:#fff;}
+  .fbbtn.primary:hover{background:rgba(86,128,235,.68);box-shadow:0 0 20px rgba(80,120,225,.45);}
+  .fbbtn.busy{opacity:.45;pointer-events:none;}
+  #fbmsg2{font-size:10.5px;letter-spacing:.4px;color:#6d81a8;margin-top:9px;min-height:13px;line-height:1.5;}
+  #fbmsg2.err{color:#e08b8b;}
+  #fbmsg2.ok{color:#7fd6a8;}
 </style>
 </head>
 <body>
@@ -50,6 +90,14 @@
   <div class="btnrow">
     <label class="btn" for="file">▸ Choose Music File</label>
     <div class="btn" id="micbtn">◉ Use Microphone</div>
+  </div>
+  <div class="dlrow">
+    <span class="lb">DOWNLOAD</span>
+    <a href="https://github.com/Dadudu-AI/fadai-universe/releases/download/v1.0.0/fadai-universe-1.0.0-arm64.dmg" target="_blank" rel="noopener">Mac · Apple&nbsp;Silicon</a>
+    <span class="dot">·</span>
+    <a href="https://github.com/Dadudu-AI/fadai-universe/releases/download/v1.0.0/fadai-universe-1.0.0-x64.dmg" target="_blank" rel="noopener">Mac · Intel</a>
+    <span class="dot">·</span>
+    <a href="https://github.com/Dadudu-AI/fadai-universe/releases/download/v1.0.0/fadai-universe-Setup-1.0.0.exe" target="_blank" rel="noopener">Windows</a>
   </div>
   <input type="file" id="file" accept="audio/*">
 </div>
@@ -66,6 +114,21 @@
   <div class="mini" id="fullscreen" title="Fullscreen">⛶</div>
 </div>
 <div id="vg"></div>
+
+<div class="fblink" id="fblink">✎ FEEDBACK</div>
+<div id="fbmodal">
+  <div id="fbbox">
+    <h3>SEND FEEDBACK</h3>
+    <p class="sub">How does it run on your machine? Bugs, lag, visual ideas — every note gets read and shapes the next build.</p>
+    <input id="fbname" maxlength="40" placeholder="Your name (optional)">
+    <textarea id="fbmsg" maxlength="800" placeholder="What should we improve? Tell us your device, what happened, and what you expected."></textarea>
+    <div class="fbrow">
+      <div class="fbbtn" id="fbcancel">Cancel</div>
+      <div class="fbbtn primary" id="fbsend">Send</div>
+    </div>
+    <div id="fbmsg2"></div>
+  </div>
+</div>
 
 <script src="lib/three.min.js"></script>
 <script src="lib/OrbitControls.js"></script>
@@ -155,7 +218,9 @@ function init(){
   camera.position.set(0,30,360);
 
   renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  // 2026-11: cap at 1.75 instead of 2.0 — on Retina that is ~23% fewer pixels with no visible
+  // difference, and it was the single biggest win for smoothness on high-dpi screens.
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.75));
   renderer.setSize(W,H);
   renderer.setClearColor(0x010109,1);
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
@@ -451,7 +516,9 @@ function buildLights(){
 function buildPost(){
   composer=new THREE.EffectComposer(renderer);
   composer.addPass(new THREE.RenderPass(scene,camera));
-  bloom=new THREE.UnrealBloomPass(new THREE.Vector2(W,H),0.7,0.6,0.4);
+  // 2026-11: bloom runs at 0.65 resolution — visually identical on a glow effect,
+  // but ~58% cheaper on fill-rate (bloom is the most expensive pass in this scene).
+  bloom=new THREE.UnrealBloomPass(new THREE.Vector2(Math.max(1,Math.round(W*0.65)),Math.max(1,Math.round(H*0.65))),0.7,0.6,0.4);
   bloom.threshold=0.42;bloom.strength=0.62;bloom.radius=0.5;   // restrained glow
   composer.addPass(bloom);
   composer.addPass(new THREE.ShaderPass(THREE.GammaCorrectionShader));
@@ -479,7 +546,8 @@ function useMic(){
     playing=true;setCoverOff();updatePlayBtn();showTrack('◉ Live Microphone');
   }).catch(function(e){console.warn('Microphone unavailable: '+e.message);});
 }
-function analyze(){
+function analyze(dtn){
+  dtn=dtn||1;
   if(!analyser)return;
   analyser.getByteFrequencyData(freqData);analyser.getByteTimeDomainData(timeData);
   var n=freqData.length;
@@ -494,9 +562,12 @@ function analyze(){
   for(var i=mEnd;i<n;i++)ts+=freqData[i];
   bass=bs/(bEnd*255);mid=ms/((mEnd-bEnd)*255);treble=ts/((n-mEnd)*255);
   overall=(bass*1.3+mid+treble*0.8)/3;
-  bassS+=(bass-bassS)*0.28;midS+=(mid-midS)*0.22;trebleS+=(treble-trebleS)*0.32;overallS+=(overall-overallS)*0.25;
+  // 2026-11: frame-rate independent smoothing. On 120Hz screens the old fixed coefficients
+  // converged ~2x faster than on 60Hz, which is exactly why motion felt inconsistent/harsh.
+  var k1=1-Math.pow(1-0.28,dtn),k2=1-Math.pow(1-0.22,dtn),k3=1-Math.pow(1-0.32,dtn),k4=1-Math.pow(1-0.25,dtn);
+  bassS+=(bass-bassS)*k1;midS+=(mid-midS)*k2;trebleS+=(treble-trebleS)*k3;overallS+=(overall-overallS)*k4;
   if(bass>bassS*1.22&&bass>0.4&&beatHold<=0){beat=1;beatHold=9;camPunch=1;camRoll=(Math.random()-0.5)*0.03;spawnShock();}
-  else beat*=0.9;
+  else beat*=Math.pow(0.9,dtn);
   if(beatHold>0)beatHold--;
 }
 
@@ -935,7 +1006,8 @@ function updatePuffs(dt){
 function animate(){
   requestAnimationFrame(animate);
   var dt=Math.min(clock.getDelta(),0.05),t=clock.elapsedTime;
-  analyze();
+  var dtn=dt*60;                              // 2026-11: normalised delta (1.0 == 60fps) for all smoothing
+  analyze(dtn);
   hueBase=(hueBase+dt*0.025+overallS*dt*0.3)%1;
 
   // shells (rotate together, each slightly counter-rotating -> a body with thickness; tied to flow energy and the creature)
@@ -1010,9 +1082,12 @@ function animate(){
   updatePuffs(dt);   // 2026-08: added particle lifecycle update — previously missing, so puffs were never cleaned up and dots accumulated
 
   // camera: grand easing + beat push-pull + slight roll
-  camPunch*=0.86;camRoll*=0.9;
+  camPunch*=Math.pow(0.86,dtn);camRoll*=Math.pow(0.9,dtn);
   var targetFov=58-bassS*8-camPunch*5;
-  camera.fov+=(targetFov-camera.fov)*0.12;camera.updateProjectionMatrix();
+  var dFov=targetFov-camera.fov;
+  // 2026-11: only re-upload the projection matrix when the FOV really moves (>0.008°).
+  // Updating it every frame was a measurable per-frame cost on the 72k-particle scenes.
+  if(Math.abs(dFov)>0.008){camera.fov+=dFov*(1-Math.pow(1-0.12,dtn));camera.updateProjectionMatrix();}
   camera.up.set(Math.sin(camRoll),Math.cos(camRoll),0);
   controls.autoRotateSpeed=0.32+midS*1.1;
   controls.update();
@@ -1020,6 +1095,22 @@ function animate(){
   if(bloom)bloom.strength=0.38+overallS*0.15+beat*0.06;   // 2026-08: glow toned down, second pass — point light/nebula already reduced, bloom lowered further
 
   composer.render();
+
+  // 2026-11: last-resort adaptive quality. If the average frame stays slower than ~45fps across
+  // 90 frames, step the pixel ratio down once — weak GPUs then stay smooth instead of stuttering.
+  if(!window.__qDropped){
+    window.__qAcc=(window.__qAcc||0)+dt;window.__qN=(window.__qN||0)+1;
+    if(window.__qN>=90){
+      var _avg=window.__qAcc/window.__qN;window.__qAcc=0;window.__qN=0;
+      if(_avg>0.022){
+        var _pr=Math.max(1,renderer.getPixelRatio()-0.35);
+        renderer.setPixelRatio(_pr);composer.setSize(W,H);
+        if(bloom)bloom.setSize(Math.max(1,Math.round(W*0.65)),Math.max(1,Math.round(H*0.65)));
+        window.__qDropped=true;
+        console.info('[Fadai] adaptive quality — pixelRatio lowered to '+_pr.toFixed(2));
+      }
+    }
+  }
 }
 
 // ==================== UI ====================
@@ -1087,7 +1178,60 @@ if (window.electronAPI && window.electronAPI.onAutoMic) {
 function setCoverOff(){document.getElementById('cover').classList.add('off');document.getElementById('ctl').classList.add('show');document.getElementById('modes').classList.add('show');}
 function updatePlayBtn(){document.getElementById('playpause').textContent=(audioEl&&!audioEl.paused)?'⏸':'▶';}
 function showTrack(name){var el=document.getElementById('track');el.textContent='♪ '+name;el.style.opacity='1';clearTimeout(window._tt);window._tt=setTimeout(function(){el.style.opacity='0';},4500);}
-function onResize(){W=window.innerWidth;H=window.innerHeight;camera.aspect=W/H;camera.updateProjectionMatrix();renderer.setSize(W,H);composer.setSize(W,H);if(bloom)bloom.setSize(W,H);}
+// ==================== Feedback (2026-11) ====================
+// No backend needed: the form posts to FormSubmit and lands in the mailbox below.
+// ⚠️ The very first submission triggers a one-off confirmation email — click the link once,
+// then every later submission is delivered silently. To use another address, edit FB_EMAIL.
+var FB_EMAIL="271596557@qq.com";
+var FB_ISSUE="https://github.com/Dadudu-AI/fadai-universe/issues/new";
+function initFeedback(){
+  var link=document.getElementById('fblink'),modal=document.getElementById('fbmodal');
+  if(!link||!modal)return;
+  var send=document.getElementById('fbsend'),cancel=document.getElementById('fbcancel');
+  var nameEl=document.getElementById('fbname'),msgEl=document.getElementById('fbmsg'),hint=document.getElementById('fbmsg2');
+  setTimeout(function(){link.classList.add('show');},1200);
+  function open(){modal.classList.add('on');hint.className='';hint.textContent='';setTimeout(function(){msgEl.focus();},90);}
+  function close(){modal.classList.remove('on');}
+  link.addEventListener('click',open);
+  cancel.addEventListener('click',close);
+  modal.addEventListener('click',function(e){if(e.target===modal)close();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')close();});
+  // permanent fallback link
+  var gh=document.createElement('div');
+  gh.style.cssText='margin-top:9px;font-size:10.5px;text-align:right;';
+  gh.innerHTML='<a href="'+FB_ISSUE+'" target="_blank" rel="noopener" style="color:#4e6187;text-decoration:none;border-bottom:1px solid rgba(78,97,135,.35);">or open an issue on GitHub →</a>';
+  document.getElementById('fbbox').appendChild(gh);
+  send.addEventListener('click',function(){
+    var msg=msgEl.value.trim();
+    if(msg.length<3){hint.className='err';hint.textContent='Please write a little more (3+ characters).';return;}
+    send.classList.add('busy');hint.className='';hint.textContent='Sending…';
+    fetch('https://formsubmit.co/ajax/'+FB_EMAIL,{method:'POST',
+      headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify({name:nameEl.value.trim()||'Anonymous',message:msg,
+        _subject:'Fadai Universe feedback',page:location.href,ua:navigator.userAgent.slice(0,140)})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&(d.success==='true'||d.success===true)){
+        hint.className='ok';hint.textContent='Received — thank you. Closing…';
+        msgEl.value='';nameEl.value='';setTimeout(close,1100);
+      }else{throw new Error((d&&d.message)||'unavailable');}
+    })
+    .catch(function(err){
+      var m=String(err.message||'network');
+      hint.className='err';
+      if(/activation/i.test(m))
+        hint.textContent='The feedback box is still being activated. Please use the GitHub link below for now.';
+      else
+        hint.textContent='Could not send ('+m.slice(0,42)+'). Use the GitHub link below instead.';
+    })
+    .then(function(){send.classList.remove('busy');});
+  });
+}
+initFeedback();
+
+function onResize(){W=window.innerWidth;H=window.innerHeight;camera.aspect=W/H;camera.updateProjectionMatrix();renderer.setSize(W,H);composer.setSize(W,H);
+  // keep bloom at its reduced 0.65 scale — composer.setSize() resets every pass to full size
+  if(bloom)bloom.setSize(Math.max(1,Math.round(W*0.65)),Math.max(1,Math.round(H*0.65)));}
 </script>
 </body>
 </html>
