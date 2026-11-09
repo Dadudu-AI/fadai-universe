@@ -11,7 +11,7 @@
     padding:0 24px;box-sizing:border-box;
     background:radial-gradient(ellipse at center,#070c22 0%,#010109 72%);text-align:center;transition:opacity 1.1s;}
   #cover.off{opacity:0;pointer-events:none;}
-  #cover h1{font-size:40px;letter-spacing:18px;margin:0 0 8px;font-weight:600;
+  #cover h1{font-size:40px;letter-spacing:18px;text-indent:18px;margin:0 0 8px;font-weight:600;
     background:linear-gradient(90deg,#4fd2e6,#8f9bff,#d98fe6,#e6c78f,#4fd2e6);background-size:220% auto;
     -webkit-background-clip:text;background-clip:text;color:transparent;animation:flow 8s linear infinite;
     filter:drop-shadow(0 0 16px rgba(110,140,230,.4));}
@@ -90,7 +90,7 @@
   /* ---- 2026-11: responsive fixes — the 40px/18px headline broke into two lines and clipped
      the subtitle on phones, and the three bottom bars collided under 720px ---- */
   @media (max-width:720px){
-    #cover h1{font-size:25px;letter-spacing:9px;margin-bottom:6px;}
+    #cover h1{font-size:25px;letter-spacing:9px;text-indent:9px;margin-bottom:6px;}
     #cover p{font-size:11.5px;letter-spacing:1.4px;line-height:1.75;}
     #cover p[style]{font-size:10.5px!important;}
     .btnrow{margin-top:22px;gap:10px;}
